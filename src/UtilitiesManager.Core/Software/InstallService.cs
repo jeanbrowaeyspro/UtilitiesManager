@@ -15,6 +15,16 @@ public enum InstallResult
     Failed,
 }
 
+/// <summary>
+/// Fichier d'installation téléchargé et contrôlé (<paramref name="File"/> nul : commande sans fichier), rangé dans
+/// le dossier temporaire <paramref name="Temp"/>.
+/// </summary>
+public sealed record Download(string Temp, string? File, string? Version)
+{
+    /// <summary>Supprime le dossier temporaire (sans effet s'il n'existe plus).</summary>
+    public void Discard() => InstallService.TryDelete(Temp);
+}
+
 public sealed record InstallOutcome(InstallResult Result, string? Message = null, string? Version = null)
 {
     public bool Succeeded => Result == InstallResult.Done;
@@ -46,9 +56,34 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
         return ordered;
     }
 
-    /// <summary>Installe ou met à jour <paramref name="program"/> (sa dépendance d'abord si elle manque).</summary>
+    /// <summary>
+    /// Vrai si le fichier d'installation peut être téléchargé pendant l'installation des logiciels précédents :
+    /// winget télécharge lui-même, et la version d'une dépendance peut entrer dans l'adresse ou le contrôle.
+    /// </summary>
+    public static bool CanDownloadAhead(ProgramEntry program) => !program.IsWinget && program.DependsOn is null;
+
+    /// <summary>Télécharge et contrôle à l'avance le fichier d'installation (<see cref="CanDownloadAhead"/>).</summary>
+    public async Task<Download> DownloadAheadAsync(ProgramEntry program, CancellationToken cancel = default)
+    {
+        var temp = Directory.CreateTempSubdirectory("UtilitiesManager-").FullName;
+        try
+        {
+            var before = await DetectAsync(program, cancel).ConfigureAwait(false);
+            return await FetchAsync(program, before, null, temp, null, cancel).ConfigureAwait(false);
+        }
+        catch
+        {
+            TryDelete(temp);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Installe ou met à jour <paramref name="program"/> (sa dépendance d'abord si elle manque), avec le fichier
+    /// téléchargé à l'avance <paramref name="ahead"/> s'il est donné (supprimé ensuite par l'appelant).
+    /// </summary>
     public async Task<InstallOutcome> InstallAsync(ProgramEntry program, Profile profile, IProgress<InstallStep>? progress = null,
-                                                   CancellationToken cancel = default)
+                                                   Task<Download>? ahead = null, CancellationToken cancel = default)
     {
         var temp = Directory.CreateTempSubdirectory("UtilitiesManager-").FullName;
         IReadOnlyList<string> closed = [];
@@ -60,7 +95,7 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
                 var depInstalled = await DetectAsync(dependency, cancel).ConfigureAwait(false);
                 if (!depInstalled.Present)
                 {
-                    var outcome = await InstallAsync(dependency, profile, progress, cancel).ConfigureAwait(false);
+                    var outcome = await InstallAsync(dependency, profile, progress, cancel: cancel).ConfigureAwait(false);
                     if (!outcome.Succeeded)
                         return outcome;
                     depInstalled = await DetectAsync(dependency, cancel).ConfigureAwait(false);
@@ -78,7 +113,7 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
                 closed = processes.Close(names);
             }
 
-            var (result, file, version) = await RunSourceAsync(program, before, depVersion, temp, progress, cancel).ConfigureAwait(false);
+            var (result, file, version) = await RunSourceAsync(program, before, depVersion, temp, ahead, progress, cancel).ConfigureAwait(false);
             if (!result.Succeeded)
                 return result;
 
@@ -121,15 +156,45 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
 
     /// <summary>Installation propre à la source ; renvoie le fichier gardé pour un retour arrière et la version posée.</summary>
     private async Task<(InstallOutcome, string?, string?)> RunSourceAsync(ProgramEntry program, InstalledInfo before, string? depVersion,
-                                                                          string temp, IProgress<InstallStep>? progress, CancellationToken cancel)
+                                                                          string temp, Task<Download>? ahead, IProgress<InstallStep>? progress,
+                                                                          CancellationToken cancel)
+    {
+        if (program.IsWinget)
+        {
+            var blocked = before.Present ? null : program.BlockedVersion;
+            Report(progress, program, L.T("Installing with winget…"));
+            return (await RunWingetAsync(program, Winget.InstallArguments(program, before.Present, blocked), cancel).ConfigureAwait(false), null, null);
+        }
+
+        if (ahead is { IsCompleted: false })
+            Report(progress, program, L.T("Downloading {0}…", program.Name));
+        var (_, file, version) = ahead is not null
+            ? await ahead.ConfigureAwait(false)
+            : await FetchAsync(program, before, depVersion, temp, progress, cancel).ConfigureAwait(false);
+
+        InstallOutcome outcome;
+        if (program.Source is Sources.Chocolatey or Sources.GitHub)
+            outcome = program.InstallCommand is not null
+                ? await RunCommandAsync(program, InstalledInfo.Absent, file, version, depVersion, progress, cancel).ConfigureAwait(false)
+                : await LaunchInstallerAsync(program, file!, progress, cancel).ConfigureAwait(false);
+        else if (file is null || program.Source == Sources.Command || program.InstallCommand is not null)
+            outcome = await RunCommandAsync(program, before, file, version, depVersion, progress, cancel).ConfigureAwait(false);
+        else if (program.Source == Sources.Zip)
+            outcome = ExtractZip(program, file, temp, progress);
+        else if (program.InstallDir is not null && Path.GetExtension(file).Equals(".exe", StringComparison.OrdinalIgnoreCase))
+            outcome = CopyPortable(program, file, progress);
+        else
+            outcome = await LaunchInstallerAsync(program, file, progress, cancel).ConfigureAwait(false);
+        return (outcome, file, version);
+    }
+
+    /// <summary>Recherche, téléchargement et contrôle du fichier d'installation (hors winget).</summary>
+    private async Task<Download> FetchAsync(ProgramEntry program, InstalledInfo before, string? depVersion, string temp,
+                                            IProgress<InstallStep>? progress, CancellationToken cancel)
     {
         Report(progress, program, L.T("Looking for the latest version…"));
         switch (program.Source)
         {
-            case Sources.Winget or Sources.MsStore:
-                var version = before.Present ? null : program.BlockedVersion;
-                Report(progress, program, L.T("Installing with winget…"));
-                return (await RunWingetAsync(program, Winget.InstallArguments(program, before.Present, version), cancel).ConfigureAwait(false), null, null);
             case Sources.Chocolatey:
             {
                 var release = await Chocolatey.GetLatestAsync(program.Package!, cancel).ConfigureAwait(false);
@@ -137,7 +202,8 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
                 var nupkg = Path.Combine(temp, $"{program.Package}.{release.Version}.nupkg");
                 await Chocolatey.DownloadAsync(release, nupkg, cancel).ConfigureAwait(false);
                 var installer = Chocolatey.ExtractInstaller(nupkg, program.InstallerPattern ?? @"\.(exe|msi)$", Path.Combine(temp, "installer"));
-                return await RunFileAsync(program, installer, release.Version, depVersion, progress, cancel).ConfigureAwait(false);
+                await integrity.CheckAsync(program, installer, depVersion, cancel).ConfigureAwait(false);
+                return new Download(temp, installer, release.Version);
             }
             case Sources.GitHub:
             {
@@ -147,7 +213,8 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
                 var file = Path.Combine(temp, latest.Asset!.Name);
                 using (var client = github(program.Package!))
                     await client.DownloadAssetAsync(latest.Asset, file, Fraction(progress, program), cancel).ConfigureAwait(false);
-                return await RunFileAsync(program, file, latest.Version, depVersion, progress, cancel).ConfigureAwait(false);
+                await integrity.CheckAsync(program, file, depVersion, cancel).ConfigureAwait(false);
+                return new Download(temp, file, latest.Version);
             }
         }
 
@@ -157,29 +224,12 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
         var target = found?.Version ?? program.Version;
         var url = found?.DownloadUrl ?? (program.Url is { } address ? ShellCommands.Expand(address, version: target, depVersion: depVersion) : null);
         if (url is null)
-            return (await RunCommandAsync(program, before, null, target, depVersion, progress, cancel).ConfigureAwait(false), null, target);
+            return new Download(temp, null, target);
 
         Report(progress, program, L.T("Downloading {0}…", target ?? program.Name));
         var downloaded = await DownloadAsync(url, temp, program.Latest?.Url, Fraction(progress, program), cancel).ConfigureAwait(false);
         await integrity.CheckAsync(program, downloaded, depVersion, cancel).ConfigureAwait(false);
-
-        if (program.Source == Sources.Zip)
-            return (ExtractZip(program, downloaded, temp, progress), downloaded, target);
-        if (program.Source == Sources.Command || program.InstallCommand is not null)
-            return (await RunCommandAsync(program, before, downloaded, target, depVersion, progress, cancel).ConfigureAwait(false), downloaded, target);
-        if (program.InstallDir is not null && Path.GetExtension(downloaded).Equals(".exe", StringComparison.OrdinalIgnoreCase))
-            return (CopyPortable(program, downloaded, progress), downloaded, target);
-        return (await LaunchInstallerAsync(program, downloaded, progress, cancel).ConfigureAwait(false), downloaded, target);
-    }
-
-    private async Task<(InstallOutcome, string?, string?)> RunFileAsync(ProgramEntry program, string file, string version, string? depVersion,
-                                                                        IProgress<InstallStep>? progress, CancellationToken cancel)
-    {
-        await integrity.CheckAsync(program, file, depVersion, cancel).ConfigureAwait(false);
-        var outcome = program.InstallCommand is not null
-            ? await RunCommandAsync(program, InstalledInfo.Absent, file, version, depVersion, progress, cancel).ConfigureAwait(false)
-            : await LaunchInstallerAsync(program, file, progress, cancel).ConfigureAwait(false);
-        return (outcome, file, version);
+        return new Download(temp, downloaded, target);
     }
 
     private async Task<string> DownloadAsync(string url, string temp, string? referer, IProgress<double>? progress, CancellationToken cancel)
@@ -391,8 +441,10 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
     private static IProgress<double>? Fraction(IProgress<InstallStep>? progress, ProgramEntry program) =>
         progress is null ? null : new Progress<double>(f => progress.Report(new InstallStep(program.Name, L.T("Downloading…"), f)));
 
-    private static void TryDelete(string folder)
+    internal static void TryDelete(string folder)
     {
+        if (!Directory.Exists(folder))
+            return;
         try
         {
             Directory.Delete(folder, recursive: true);
