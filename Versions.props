@@ -2,6 +2,6 @@
   <!-- Version du produit : X.Y.n pour une version d'essai (branche essai), X.Y.0 pour une livraison (main).
        L'étiquette git (vX.Y.n ou vX.Y) doit correspondre : le workflow de publication le vérifie. -->
   <PropertyGroup>
-    <UtilitiesManagerVersion>0.0.1</UtilitiesManagerVersion>
+    <UtilitiesManagerVersion>0.0.2</UtilitiesManagerVersion>
   </PropertyGroup>
 </Project>

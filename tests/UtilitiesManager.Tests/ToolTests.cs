@@ -95,7 +95,7 @@ public partial class ToolTests
         var newest = entries[0];
         Assert.Equal(AppInfo.Version, newest.Version.ToString());
         Assert.NotEmpty(newest.Sections.SelectMany(s => s.Lines));
-        Assert.Equal([newest], Changelog.Between(entries, null, newest.Version));
+        Assert.Equal(entries, Changelog.Between(entries, null, newest.Version));
         Assert.Empty(Changelog.Between(entries, newest.Version, newest.Version));
     }
 

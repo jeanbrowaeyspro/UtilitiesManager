@@ -1,5 +1,10 @@
 # Nouveautés
 
+## [0.0.2] - 2026-11-16
+
+### Corrigé
+- Icône nette dans la fenêtre "À propos" (elle était agrandie depuis sa plus petite image).
+
 ## [0.0.1] - 2026-11-16
 
 ### Ajouté

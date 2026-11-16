@@ -30,6 +30,19 @@ public static class Ui
 
     public static ImageSource AppIcon => _appIcon ??= LoadIcon();
 
+    private static ImageSource? _largeIcon;
+
+    /// <summary>Icône affichée en grand : la plus grande image du .ico, réduite avec lissage (la première image
+    /// du fichier, 16 px, serait agrandie et pixelisée).</summary>
+    public static Image IconImage(double size, Thickness margin)
+    {
+        _largeIcon ??= BitmapDecoder.Create(new Uri(IconUri), BitmapCreateOptions.None, BitmapCacheOption.OnLoad)
+            .Frames.MaxBy(f => f.PixelWidth)!;
+        var image = new Image { Source = _largeIcon, Width = size, Height = size, Margin = margin };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        return image;
+    }
+
     public static TextBlock Glyph(string glyph, double size = 16)
     {
         var text = new TextBlock { Text = glyph, FontSize = size, VerticalAlignment = VerticalAlignment.Center };

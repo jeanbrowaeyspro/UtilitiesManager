@@ -26,7 +26,7 @@ public sealed class AboutWindow : ThemedWindow
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         var header = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
-        header.Children.Add(new Image { Source = Ui.AppIcon, Width = 64, Height = 64, Margin = new Thickness(0, 0, 16, 0) });
+        header.Children.Add(Ui.IconImage(64, new Thickness(0, 0, 16, 0)));
         var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         var name = Ui.Heading(AppPaths.AppName, 24);
         name.Margin = new Thickness(0);
