@@ -62,7 +62,10 @@ compte d'utilisateur (UAC) reste affichée.
 
 Tout installeur qui ne vient pas de winget est contrôlé avant d'être lancé : signature Authenticode de l'éditeur
 attendu, empreinte SHA-256 ou origine (dépôt GitHub). La fenêtre de contrôle de compte d'utilisateur (UAC) n'est
-jamais masquée.
+jamais masquée. À partir de deux logiciels, elle n'apparaît qu'une fois pour toute la série : un second processus de
+l'application, lancé en administrateur, mène les installations. Si elle est refusée, chaque installeur la demande
+lui-même. Pendant une série, "Arrêter" et "Pause" (fenêtre ou menu de l'icône) prennent effet après le logiciel en
+cours.
 
 ## Profil
 

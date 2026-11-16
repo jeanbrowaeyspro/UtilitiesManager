@@ -1,5 +1,13 @@
 # Nouveautés
 
+## [0.0.5] - 2026-11-16
+
+### Ajouté
+- Une seule demande de droits administrateur pour toute une série d'installations (au lieu d'une par installeur). Refusée, chaque installeur les demande comme avant. Les applications du Microsoft Store s'installent toujours sans droits administrateur.
+- Bouton "Arrêter" pendant les installations (aussi dans le menu de l'icône de notification) : le logiciel en cours va jusqu'au bout, les suivants ne sont pas traités et leurs téléchargements sont supprimés.
+- Bouton "Pause" / "Reprendre" (aussi dans le menu de l'icône) : les installations attendent après le logiciel en cours.
+- Ligne de commande : Ctrl+C arrête les installations après le logiciel en cours.
+
 ## [0.0.4] - 2026-11-16
 
 ### Ajouté
