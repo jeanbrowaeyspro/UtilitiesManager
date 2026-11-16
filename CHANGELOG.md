@@ -1,5 +1,10 @@
 # Nouveautés
 
+## [0.0.4] - 2026-11-16
+
+### Corrigé
+- Connexion à GitHub : la page ne s'ouvre plus d'elle-même, seulement par "Copier et ouvrir GitHub" (elle s'ouvrait deux fois).
+
 ## [0.0.3] - 2026-11-16
 
 ### Corrigé

@@ -55,7 +55,6 @@ public sealed class SignInWindow : ThemedWindow
             _device = await _account.RequestCodeAsync(_cancel.Token);
             _code.Text = _device.UserCode;
             _status.Text = L.T("Waiting for GitHub…");
-            Open();
             await _account.SignInAsync(_device, _cancel.Token);
             DialogResult = true;
         }
