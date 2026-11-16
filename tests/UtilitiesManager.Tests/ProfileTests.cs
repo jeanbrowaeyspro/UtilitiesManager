@@ -71,18 +71,21 @@ public class ProfileTests
     }
 
     [Fact]
-    public async Task ProfileRepositoryBelongsToTheSignedInAccountAndLocalCopyServesWithoutIt()
+    public async Task WithoutGitHubAccountTheProfileIsKeptOnThisPcAndStartsEmpty()
     {
         var paths = Fixtures.NewPaths();
         var login = "";
         var store = new ProfileStore(paths, () => login, _ => throw new InvalidOperationException("aucune requête sans compte"));
 
         Assert.Null(store.Repository);
+        var first = await store.LoadAsync();
+        Assert.Empty(first.Profile!.Programs);
+        Assert.Null(first.Error);
+
+        var profile = ProfileValidator.Read(Json).Profile!;
+        await store.SaveAsync(profile, "ajout");
+        Assert.Equal(profile.ToJson(), (await store.LoadAsync()).Profile!.ToJson());
         Assert.Empty(store.Import(WriteJson(paths)));
-        var load = await store.LoadAsync();
-        Assert.True(load.FromCache);
-        Assert.NotNull(load.Profile);
-        Assert.NotNull(load.Error);
 
         login = "utilisateur";
         Assert.Equal("utilisateur/UtilitiesProfile", store.Repository);

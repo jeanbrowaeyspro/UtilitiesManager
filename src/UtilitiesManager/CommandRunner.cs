@@ -182,10 +182,11 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
     {
         var load = await services.Profiles.LoadAsync();
         var synced = load.Profile is not null && !load.FromCache;
+        var failure = services.Profiles.Repository is null ? L.T("Profile: on this PC (no GitHub account)") : load.Error;
         if (_json)
-            WriteJson(new JsonObject { ["synced"] = synced, ["error"] = load.Error });
+            WriteJson(new JsonObject { ["synced"] = synced, ["error"] = synced ? null : failure });
         else
-            output.WriteLine(synced ? L.T("Profile: GitHub repository {0}", services.Profiles.Repository) : load.Error);
+            output.WriteLine(synced ? L.T("Profile: GitHub repository {0}", services.Profiles.Repository) : failure);
         return synced ? CliCommand.ExitOk : CliCommand.ExitFailed;
     }
 

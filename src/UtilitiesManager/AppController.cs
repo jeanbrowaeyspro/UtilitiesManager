@@ -128,8 +128,8 @@ public sealed class AppController
         if (load.Profile is not null)
         {
             Profile = load.Profile;
-            ProfileOrigin = load.FromCache
-                ? L.T("Profile: local copy ({0})", load.Error ?? L.T("repository unreachable"))
+            ProfileOrigin = Services.Profiles.Repository is null ? L.T("Profile: on this PC (no GitHub account)")
+                : load.FromCache ? L.T("Profile: local copy ({0})", load.Error ?? L.T("repository unreachable"))
                 : L.T("Profile: GitHub repository {0}", Services.Profiles.Repository);
         }
         else
@@ -146,11 +146,6 @@ public sealed class AppController
     {
         if (Profile is null)
             return false;
-        if (!Services.Account.IsSignedIn)
-        {
-            Dialogs.Error(L.T("Sign in to GitHub (Settings tab) to change the profile."));
-            return false;
-        }
         var changed = Profile.Clone();
         edit(changed);
         var errors = ProfileValidator.Validate(changed);
@@ -215,6 +210,9 @@ public sealed class AppController
                                         L.T("Allow access"), L.T("Later")))
                         Ui.OpenExternal(GitHubSignIn.InstallationUrl);
                     return;
+                case ProfileAccess.NoProfileFile when Profile is null:
+                    await Services.Profiles.SaveAsync(new Profile(), "Profil initial");
+                    break;
                 case ProfileAccess.NoProfileFile when Profile is { } local:
                     if (Dialogs.Confirm(L.T("The repository {0} does not contain a profile yet. Send the local copy of the profile to it?", repository),
                                         L.T("Send"), L.T("Later")))

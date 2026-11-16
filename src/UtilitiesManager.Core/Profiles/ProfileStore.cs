@@ -44,6 +44,9 @@ public sealed class ProfileStore(AppPaths paths, Func<string> owner, Func<string
     /// </summary>
     public async Task<ProfileLoad> LoadAsync(CancellationToken cancellation = default)
     {
+        // Sans compte : profil tenu sur ce PC, vide au premier lancement.
+        if (Repository is null)
+            return new ProfileLoad(LoadCache() ?? new Profile(), true, null);
         string? error;
         try
         {
@@ -90,17 +93,23 @@ public sealed class ProfileStore(AppPaths paths, Func<string> owner, Func<string
         return errors;
     }
 
-    /// <summary>Enregistre le profil modifié : commit dans le dépôt, puis copie locale.</summary>
+    /// <summary>
+    /// Enregistre le profil modifié : commit dans le dépôt du compte connecté, puis copie locale ; sans compte, sur
+    /// ce PC seulement.
+    /// </summary>
     public async Task SaveAsync(Profile profile, string message, CancellationToken cancellation = default)
     {
         var errors = ProfileValidator.Validate(profile);
         if (errors.Count > 0)
             throw new InvalidDataException(string.Join(Environment.NewLine, errors));
         var text = profile.ToJson();
-        using (var client = Client())
+        if (Repository is not null)
+        {
+            using var client = Client();
             await client.PutFileAsync(FileName, Encoding.UTF8.GetBytes(text), message, cancellation).ConfigureAwait(false);
+        }
         AtomicFile.WriteAllText(paths.ProfileCache, text);
-        Log.Info($"Profil enregistré sur GitHub : {message}");
+        Log.Info($"Profil enregistré {(Repository is null ? "sur ce PC" : "sur GitHub")} : {message}");
     }
 
     /// <summary>Télécharge un fichier du dépôt du profil (<c>profile:chemin</c>) vers <paramref name="destination"/>.</summary>

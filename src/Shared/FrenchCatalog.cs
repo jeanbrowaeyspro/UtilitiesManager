@@ -74,7 +74,7 @@ internal static class FrenchCatalog
         ["repository unreachable"] = "dépôt injoignable",
         ["Profile: GitHub repository {0}"] = "Profil : dépôt GitHub {0}",
         ["No profile: sign in to GitHub or import a profile file (Settings tab)."] = "Aucun profil : se connecter à GitHub ou importer un fichier de profil (onglet Paramètres).",
-        ["Sign in to GitHub (Settings tab) to change the profile."] = "Se connecter à GitHub (onglet Paramètres) pour modifier le profil.",
+        ["Profile: on this PC (no GitHub account)"] = "Profil : sur ce PC (sans compte GitHub)",
         ["The profile is not valid, nothing was saved:\n\n{0}"] = "Le profil n'est pas valide, rien n'a été enregistré :\n\n{0}",
         ["The profile could not be saved:\n\n{0}"] = "Le profil n'a pas pu être enregistré :\n\n{0}",
         ["The profile is not valid, nothing was imported:\n\n{0}"] = "Le profil n'est pas valide, rien n'a été importé :\n\n{0}",
