@@ -124,6 +124,11 @@ public sealed class AppController
 
     // ---- Profil ----------------------------------------------------------------------------------------------
 
+    /// <summary>Origine du profil quand il est à jour : sur ce PC sans compte, sinon le dépôt GitHub.</summary>
+    private string SavedOrigin() => Services.Profiles.Repository is { } repository
+        ? L.T("Profile: GitHub repository {0}", repository)
+        : L.T("Profile: on this PC (no GitHub account)");
+
     private async Task LoadProfileAsync()
     {
         var load = await Services.Profiles.LoadAsync();
@@ -131,10 +136,9 @@ public sealed class AppController
         if (load.Profile is not null)
         {
             Profile = load.Profile;
-            ProfileOrigin = Services.Profiles.Repository is null ? L.T("Profile: on this PC (no GitHub account)")
+            ProfileOrigin = Services.Profiles.Repository is null || !load.FromCache ? SavedOrigin()
                 : load.RepositoryMissing ? load.Error!
-                : load.FromCache ? L.T("Profile: local copy ({0})", load.Error ?? L.T("repository unreachable"))
-                : L.T("Profile: GitHub repository {0}", Services.Profiles.Repository);
+                : L.T("Profile: local copy ({0})", load.Error ?? L.T("repository unreachable"));
         }
         else
         {
@@ -169,6 +173,9 @@ public sealed class AppController
             return false;
         }
         Profile = changed;
+        // Enregistré là où il doit l'être : le bandeau ne parle plus de copie locale ni de dépôt manquant.
+        ProfileOrigin = SavedOrigin();
+        ProfileRepositoryMissing = false;
         await CheckAsync(manual: true);
         return true;
     }

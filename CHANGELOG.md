@@ -11,6 +11,7 @@
 
 ### Corrigé
 - Compte GitHub connecté sans dépôt UtilitiesProfile : message "Dépôt introuvable" et bouton "Créer le dépôt" dans Paramètres, au lieu de "Profil injoignable, se connecter".
+- Le bandeau indique le dépôt GitHub dès qu'une modification du profil y est enregistrée (il pouvait encore afficher "copie locale").
 - Connexion à GitHub : la page ne s'ouvre plus d'elle-même, seulement par "Copier et ouvrir GitHub" (elle s'ouvrait deux fois).
 
 ## [0.0.3] - 2026-11-16
