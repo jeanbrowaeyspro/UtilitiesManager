@@ -74,6 +74,10 @@ le fichier, sans nouvelle version de l'outil.
 qui autorise UtilitiesManager à accéder à ce seul dépôt. Si le dépôt est vide, il propose d'y envoyer la copie
 locale du profil.
 
+Logiciel publié dans un autre dépôt GitHub privé (source "Release GitHub") : sur GitHub, Settings > Applications >
+UtilitiesManager > Configure, ajouter ce dépôt à la liste des dépôts autorisés. Aucune modification de l'outil
+n'est nécessaire.
+
 ## Fichiers
 
 | Emplacement | Contenu |
