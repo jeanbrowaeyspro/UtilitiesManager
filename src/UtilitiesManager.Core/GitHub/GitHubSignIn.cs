@@ -46,10 +46,10 @@ public sealed class SignInException(SignInFailure failure, string message) : Exc
 public sealed class GitHubSignIn : GitHubHttpClient
 {
     /// <summary>Client ID public de l'application GitHub de UtilitiesManager ; vide tant qu'elle n'est pas creee.</summary>
-    public const string ApplicationClientId = "";
+    public const string ApplicationClientId = "Iv23liZla5crbTyuBEHK";
 
     /// <summary>Nom public de l'application GitHub dans son adresse (github.com/apps/...) ; vide tant qu'elle n'est pas creee.</summary>
-    public const string ApplicationSlug = "";
+    public const string ApplicationSlug = "utilitiesmanager";
 
     /// <summary>Page GitHub qui installe l'application sur les depots choisis par l'utilisateur.</summary>
     public static string InstallationUrl => $"https://github.com/apps/{ApplicationSlug}/installations/new";

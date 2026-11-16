@@ -5,16 +5,11 @@
 - Essai de la version 0.0.1 sur un PC : installation de l'outil, import de `profile.json` (copie locale du dépôt
   UtilitiesProfile), vérification, installation d'un logiciel winget, d'un logiciel par commande, d'un outil
   portable (BareTail), retour à la version précédente, réglages Windows appliqués puis rétablis.
+- Essai de la connexion GitHub (0.0.2) : connexion par code, création du dépôt `UtilitiesProfile`, installation de
+  l'app UtilitiesManager sur ce dépôt, envoi du profil du PC.
 
 ## À faire
 
-- Enregistrer l'application GitHub (GitHub App) de UtilitiesManager sous le compte de Jean, en éditeur du logiciel :
-  installable par tout compte ("Any account"), flux d'appareil activé, sans webhook, permission Contents en
-  lecture et écriture (Metadata en lecture, imposée). Chaque utilisateur l'installe sur son seul dépôt
-  `<compte>/UtilitiesProfile`. Poser son Client ID dans `GitHubSignIn.ApplicationClientId` et son nom d'adresse
-  (github.com/apps/...) dans `GitHubSignIn.ApplicationSlug`. Sans elle, pas de connexion GitHub : profil importé
-  à la main, et les fichiers `profile:` (zip EdiTSAB, `office_config.xml`) comme la release privée de HAIC ne
-  peuvent pas être téléchargés.
 - Signataires de Npcap et d'iVMS-4200 à relever sur un installeur téléchargé, puis `verify: signature` et `signer`
   dans le profil (aujourd'hui sans contrôle de signature, installeurs ouverts pour Jean).
 - Retouches de fichiers `.ini` (`ini` du profil, cas Greenshot) : non modifiables dans l'éditeur de l'outil,
