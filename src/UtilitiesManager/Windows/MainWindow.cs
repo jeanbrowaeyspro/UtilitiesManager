@@ -140,6 +140,7 @@ public sealed class MainWindow : ThemedWindow
     {
         var check = new FrameworkElementFactory(typeof(CheckBox));
         check.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        check.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
         check.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty,
                          new Binding(nameof(ProgramRow.Selected)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
         _programs.Columns.Add(new DataGridTemplateColumn { CellTemplate = new DataTemplate { VisualTree = check }, Width = 40 });
@@ -168,11 +169,18 @@ public sealed class MainWindow : ThemedWindow
         return panel;
     }
 
+    /// <summary>Texte des cellules centré en hauteur, aligné sur les cases à cocher.</summary>
+    private static readonly Style CenteredText = new(typeof(TextBlock))
+    {
+        Setters = { new Setter(VerticalAlignmentProperty, VerticalAlignment.Center) },
+    };
+
     private void Column(string header, string property, double width) =>
         _programs.Columns.Add(new DataGridTextColumn
         {
             Header = header,
             Binding = new Binding(property),
+            ElementStyle = CenteredText,
             IsReadOnly = true,
             Width = double.IsNaN(width) ? new DataGridLength(1, DataGridLengthUnitType.Star) : new DataGridLength(width),
             MinWidth = 80,
