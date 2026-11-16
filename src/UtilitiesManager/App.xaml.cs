@@ -20,6 +20,12 @@ public partial class App : Application
         var settings = AppSettings.Load(paths.SettingsFile);
         L.Use(settings.Language);
 
+        if (CliCommand.IsCommand(e.Args))
+        {
+            Shutdown(await RunCommandAsync(paths, settings, e.Args));
+            return;
+        }
+
         _instance = new SingleInstance();
         if (!_instance.IsFirst)
         {
@@ -46,4 +52,31 @@ public partial class App : Application
         Log.Info($"Démarrage {AppInfo.Version}{(args.Startup ? " (session)" : "")}");
         await controller.StartAsync(args);
     }
+
+    /// <summary>
+    /// Commande sans fenêtre, même si l'application tourne déjà en arrière-plan (verrou commun des opérations).
+    /// Les questions éventuelles reçoivent "non" : rien ne s'affiche.
+    /// </summary>
+    private static async Task<int> RunCommandAsync(AppPaths paths, AppSettings settings, string[] args)
+    {
+        var utf8 = new System.Text.UTF8Encoding(false);
+        using var output = new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true };
+        using var error = new StreamWriter(Console.OpenStandardError(), utf8) { AutoFlush = true };
+        var services = new AppServices(paths, settings, new SilentDialogs(error));
+        return await new CommandRunner(services, output, error).RunAsync(args);
+    }
+}
+
+/// <summary>Messages de la ligne de commande : écrits sur la sortie d'erreur, questions refusées.</summary>
+public sealed class SilentDialogs(TextWriter error) : IDialogs
+{
+    public bool Confirm(string text, string? yes = null, string? no = null)
+    {
+        error.WriteLine(text);
+        return false;
+    }
+
+    public void Info(string text) => error.WriteLine(text);
+
+    public void Error(string text) => error.WriteLine(text);
 }

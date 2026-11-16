@@ -16,10 +16,15 @@ public static class Program
 {
     public const string Title = "UtilitiesManager";
 
+    /// <summary>Commande en ligne de commande : messages sur la sortie d'erreur, jamais de boîte de dialogue.</summary>
+    private static bool _command;
+
     [STAThread]
     public static int Main()
     {
         L.Use(L.LanguageIn(AppLocations.SettingsFile(AppLocations.RoamingAppData)));
+        var args = Environment.GetCommandLineArgs();
+        _command = args.Length > 1 && Switches.IsCommand(args[1]);
         try
         {
             if (!RuntimeCheck.IsInstalled(RuntimeCheck.CandidateRoots()) && !RuntimeSetup.Run())
@@ -28,12 +33,17 @@ public static class Program
             var app = AppLocations.ExtractedApp(AppLocations.DataDir(AppLocations.LocalAppData));
             if (!PrepareApp(app))
                 return 1;
-            Process.Start(new ProcessStartInfo(app, CommandLine.ForApp(launcher, Environment.CommandLine))
+            var start = new ProcessStartInfo(app, CommandLine.ForApp(launcher, Environment.CommandLine))
             {
                 UseShellExecute = false,
                 WorkingDirectory = Environment.CurrentDirectory,
-            })?.Dispose();
-            return 0;
+            };
+            if (!_command)
+            {
+                Process.Start(start)?.Dispose();
+                return 0;
+            }
+            return RunCommand(start);
         }
         catch (Exception exc)
         {
@@ -75,6 +85,35 @@ public static class Program
         }
     }
 
-    public static void Error(string text) =>
+    /// <summary>
+    /// Commande : attend la fin de l'application et relaie ses sorties telles quelles (octets UTF-8) vers celles du
+    /// lanceur ; rend son code de sortie.
+    /// </summary>
+    private static int RunCommand(ProcessStartInfo start)
+    {
+        start.RedirectStandardOutput = true;
+        start.RedirectStandardError = true;
+        start.CreateNoWindow = true;
+        using (var process = Process.Start(start))
+        using (var output = Console.OpenStandardOutput())
+        using (var error = Console.OpenStandardError())
+        {
+            var relayOutput = process.StandardOutput.BaseStream.CopyToAsync(output);
+            var relayError = process.StandardError.BaseStream.CopyToAsync(error);
+            process.WaitForExit();
+            System.Threading.Tasks.Task.WaitAll(relayOutput, relayError);
+            return process.ExitCode;
+        }
+    }
+
+    public static void Error(string text)
+    {
+        if (_command)
+        {
+            using (var error = new StreamWriter(Console.OpenStandardError(), new System.Text.UTF8Encoding(false)))
+                error.WriteLine(text);
+            return;
+        }
         MessageBox.Show(text, Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
 }

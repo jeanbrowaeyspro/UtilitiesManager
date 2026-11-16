@@ -28,6 +28,26 @@ runtime .NET Desktop 10 et propose de l'installer s'il manque.
 Un logiciel absent du poste est toujours proposé à l'installation, jamais installé en silence. Un logiciel retiré
 du profil est proposé à la désinstallation.
 
+## Ligne de commande
+
+`UtilitiesManager.exe <commande> [--json]`, sans fenêtre, même si l'outil tourne déjà en arrière-plan.
+
+| Commande | Effet |
+|---|---|
+| `check` | Vérifie les logiciels du profil et les réglages Windows |
+| `install <id>` ou `install --all` | Installe un logiciel absent (ou tous) |
+| `update <id>` ou `update --all` | Installe une mise à jour disponible (ou toutes) |
+| `revert <id>` | Revient à la version précédente gardée sur le PC |
+| `settings apply <id>` / `settings restore <id>` | Applique ou rétablit un réglage Windows |
+| `profile import <fichier>` | Importe un fichier de profil (copie locale) |
+| `profile sync` | Relit le profil sur GitHub |
+| `help` | Aide |
+
+Avec `--json`, le résultat est écrit en JSON sur la sortie standard et l'avancement sur la sortie d'erreur. Codes
+de sortie : 0 fait, 1 échec, 2 ligne de commande incorrecte, 3 actions en attente, 4 autre opération en cours.
+Chaque commande est écrite dans le journal. Les questions éventuelles reçoivent "non" et la fenêtre de contrôle de
+compte d'utilisateur (UAC) reste affichée.
+
 ## Sources prises en charge
 
 | Source | Exemple |

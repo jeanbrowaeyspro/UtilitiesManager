@@ -15,4 +15,14 @@ internal static class Switches
     public const string AfterInstall = "/installation";
     /// <summary>Suivi du chemin complet du lanceur (fichier copié à l'installation).</summary>
     public const string Launcher = "/lanceur";
+
+    /// <summary>
+    /// Commandes du pilotage en ligne de commande (premier argument) : l'application les exécute sans fenêtre et
+    /// le lanceur attend sa fin pour rendre son code de sortie.
+    /// </summary>
+    public static readonly string[] Commands = { "check", "install", "update", "revert", "settings", "profile", "help" };
+
+    /// <summary>Vrai si <paramref name="first"/> (premier argument utile) est une commande.</summary>
+    public static bool IsCommand(string? first) =>
+        first != null && System.Array.Exists(Commands, c => c.Equals(first, System.StringComparison.OrdinalIgnoreCase));
 }

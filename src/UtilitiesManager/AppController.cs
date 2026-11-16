@@ -25,11 +25,14 @@ public sealed class AppController
     private TrayIcon? _tray;
     private MainWindow? _window;
     private UpdateWindow? _updateWindow;
+    private readonly SoftwareActions _actions;
+    private OperationLock? _lock;
 
     public AppController(Application app, AppServices services)
     {
         _app = app;
         Services = services;
+        _actions = new SoftwareActions(services);
         _timer = new DispatcherTimer { Interval = Tick };
         _timer.Tick += async (_, _) => await OnTickAsync();
     }
@@ -198,9 +201,8 @@ public sealed class AppController
     /// </summary>
     public async Task CheckAsync(bool manual)
     {
-        if (Busy)
+        if (!Begin())
             return;
-        SetBusy(true);
         try
         {
             Report(L.T("Checking the software…"), null);
@@ -210,24 +212,21 @@ public sealed class AppController
                 Last = null;
                 return;
             }
-            Last = await Services.Checker.CheckAsync(profile, Services.State, Settings.DeclinedUninstalls);
-            Services.SaveState();
-            Settings.LastCheck = DateTimeOffset.Now;
-            Services.SaveSettings();
+            Last = await _actions.CheckAsync(profile);
             if (Last.WingetError is { } error)
                 Report(L.T("winget: {0}", error), null);
             StateChanged?.Invoke();
 
-            var auto = InstallService.Order(Last.AutoUpdates(profile.Defaults).Select(s => s.Program)).ToList();
+            var auto = Last.AutoUpdates(profile.Defaults).Select(s => s.Program).ToList();
             if (auto.Count > 0)
             {
-                var (done, failed) = await RunAsync(auto, Last);
+                var (done, failed) = await _actions.RunAsync(auto, Last, profile, Report);
+                var doneNames = string.Join(", ", done.Select(p => p.Name));
                 _tray?.Notify(AppPaths.AppName, failed.Count == 0
-                    ? L.T("Updated: {0}", string.Join(", ", done))
-                    : L.T("Updated: {0}\nFailed: {1}", done.Count > 0 ? string.Join(", ", done) : L.T("none"), string.Join(", ", failed)),
+                    ? L.T("Updated: {0}", doneNames)
+                    : L.T("Updated: {0}\nFailed: {1}", done.Count > 0 ? doneNames : L.T("none"), string.Join(", ", failed.Select(f => f.Program.Name))),
                     ShowMainWindow);
-                Last = await Services.Checker.CheckAsync(profile, Services.State, Settings.DeclinedUninstalls);
-                Services.SaveState();
+                Last = await _actions.CheckAsync(profile);
             }
             Report(L.T("Check finished."), null);
         }
@@ -238,7 +237,7 @@ public sealed class AppController
         }
         finally
         {
-            SetBusy(false);
+            End();
         }
         _tray?.SetPending(PendingCount);
         if (!manual && PendingCount > 0)
@@ -282,82 +281,62 @@ public sealed class AppController
     /// <summary>Installe, met à jour ou désinstalle (logiciels retirés du profil) les logiciels choisis, puis revérifie.</summary>
     public async Task InstallAsync(IReadOnlyList<ProgramStatus> chosen)
     {
-        if (Busy || Profile is null || Last is not { } last || chosen.Count == 0)
+        if (Profile is not { } profile || Last is not { } last || chosen.Count == 0 || !Begin())
             return;
-        SetBusy(true);
         try
         {
-            var (_, failed) = await RunAsync(InstallService.Order(chosen.Select(s => s.Program)), last);
+            var (_, failed) = await _actions.RunAsync(chosen.Select(s => s.Program), last, profile, Report);
             if (failed.Count > 0)
-                Dialogs.Error(L.T("Failed: {0}\n\nSee the log below the list.", string.Join(", ", failed)));
+                Dialogs.Error(L.T("Failed: {0}\n\nSee the log below the list.", string.Join(", ", failed.Select(f => f.Program.Name))));
         }
         finally
         {
-            SetBusy(false);
+            End();
         }
         await CheckAsync(manual: true);
-    }
-
-    /// <summary>Fait chaque action dans l'ordre ; renvoie les noms réussis et ceux en échec.</summary>
-    private async Task<(List<string> Done, List<string> Failed)> RunAsync(IReadOnlyList<ProgramEntry> programs, CheckResult last)
-    {
-        var done = new List<string>();
-        var failed = new List<string>();
-        for (var i = 0; i < programs.Count; i++)
-        {
-            var program = programs[i];
-            var index = i;
-            var progress = new Progress<InstallStep>(step =>
-                Report($"{step.Program} : {step.Text}", (index + (step.Fraction ?? 0)) / programs.Count));
-            var status = last.Programs.FirstOrDefault(p => p.Program.Id == program.Id);
-            InstallOutcome outcome;
-            try
-            {
-                outcome = status?.State == ProgramState.Removed
-                    ? await Services.Installer.UninstallAsync(program, status.Installed, progress)
-                    : await Services.Installer.InstallAsync(program, Profile!, progress);
-            }
-            catch (Exception exc) when (exc is not OutOfMemoryException)
-            {
-                Log.Error($"{program.Id} : {exc}");
-                outcome = new InstallOutcome(InstallResult.Failed, exc.Message);
-            }
-            Services.SaveState();
-            if (outcome.Succeeded)
-            {
-                done.Add(program.Name);
-                Report(L.T("{0}: done.", program.Name), (i + 1.0) / programs.Count);
-            }
-            else
-            {
-                failed.Add(program.Name);
-                Report(L.T("{0}: {1}", program.Name, outcome.Message ?? L.T("cancelled")), (i + 1.0) / programs.Count);
-            }
-        }
-        return (done, failed);
     }
 
     public bool CanRevert(ProgramStatus status) => Services.Installer.CanRevert(status.Program);
 
     public async Task RevertAsync(ProgramStatus status)
     {
-        if (Busy)
+        if (!Begin())
             return;
-        SetBusy(true);
         try
         {
-            var progress = new Progress<InstallStep>(step => Report($"{step.Program} : {step.Text}", step.Fraction));
-            var outcome = await Services.Installer.RevertAsync(status.Program, progress);
-            Services.SaveState();
-            Report(outcome.Succeeded ? L.T("{0}: done.", status.Program.Name) : L.T("{0}: {1}", status.Program.Name, outcome.Message ?? ""), null);
+            var outcome = await _actions.RevertAsync(status.Program, Report);
             if (!outcome.Succeeded)
                 Dialogs.Error(outcome.Message ?? L.T("Failed."));
         }
         finally
         {
-            SetBusy(false);
+            End();
         }
         await CheckAsync(manual: true);
+    }
+
+    /// <summary>
+    /// Début d'une opération : refusée si une autre est en cours ici ou dans une commande (verrou commun).
+    /// </summary>
+    private bool Begin()
+    {
+        if (Busy)
+            return false;
+        _lock = OperationLock.TryAcquire();
+        if (_lock is null)
+        {
+            Report(L.T("Another UtilitiesManager operation is in progress."), null);
+            return false;
+        }
+        SetBusy(true);
+        return true;
+    }
+
+    private void End()
+    {
+        _lock?.Dispose();
+        _lock = null;
+        SetBusy(false);
     }
 
     private void SetBusy(bool busy)
@@ -387,18 +366,9 @@ public sealed class AppController
     {
         try
         {
-            foreach (var tweak in tweaks)
-            {
-                if (apply)
-                    Services.Tweaks.Apply(tweak);
-                else
-                    Services.Tweaks.Restore(tweak);
-                Report(L.T("{0}: {1}", tweak.Name, apply ? L.T("applied") : L.T("restored")), null);
-            }
-            if (tweaks.Any(t => t.RestartExplorer))
-                WindowsTweaks.RestartExplorer();
+            _actions.ChangeTweaks(tweaks, apply, Report);
         }
-        catch (Exception exc) when (exc is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        catch (Exception exc) when (SoftwareActions.IsTweakFailure(exc))
         {
             Log.Error($"Réglages Windows : {exc.Message}");
             Dialogs.Error(L.T("The setting could not be changed:\n\n{0}", exc.Message));

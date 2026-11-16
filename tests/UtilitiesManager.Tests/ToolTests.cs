@@ -105,4 +105,24 @@ public partial class ToolTests
         Assert.Equal("/demarrage", CommandLine.Arguments("\"C:\\Program Files\\UtilitiesManager.exe\"  /demarrage"));
         Assert.Equal($"{Switches.Launcher} \"C:\\U.exe\"", CommandLine.ForApp("C:\\U.exe", "U.exe"));
     }
+
+    [Fact]
+    public void CommandLineIsParsedAndRejectsIncorrectArguments()
+    {
+        string[] launcher = [Switches.Launcher, "C:\\U.exe"];
+        Assert.True(CliCommand.IsCommand([.. launcher, "check"]));
+        Assert.False(CliCommand.IsCommand([.. launcher, Switches.Startup]));
+
+        Assert.Equal(new CliCommand("check", Json: true), CliCommand.Parse([.. launcher, "check", "--json"], out _));
+        Assert.Equal(new CliCommand("update", All: true), CliCommand.Parse(["update", "--all"], out _));
+        Assert.Equal(new CliCommand("install", Target: "git"), CliCommand.Parse(["install", "git"], out _));
+        Assert.Equal(new CliCommand("settings", "restore", "explorer"), CliCommand.Parse(["settings", "Restore", "explorer"], out _));
+        Assert.Equal(new CliCommand("profile", "import", "p.json"), CliCommand.Parse(["profile", "import", "p.json"], out _));
+
+        foreach (var wrong in new string[][] { ["update"], ["update", "git", "--all"], ["revert"], ["settings", "apply"], ["check", "--force"], ["profile", "push"] })
+        {
+            Assert.Null(CliCommand.Parse(wrong, out var error));
+            Assert.NotNull(error);
+        }
+    }
 }

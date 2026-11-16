@@ -2,6 +2,9 @@
 
 ## [0.0.2] - 2026-11-16
 
+### Ajouté
+- Ligne de commande : vérifier, installer, mettre à jour, revenir à la version précédente, appliquer ou rétablir un réglage Windows, importer ou relire le profil, avec résultat en JSON et code de sortie.
+
 ### Corrigé
 - Icône nette dans la fenêtre "À propos" (elle était agrandie depuis sa plus petite image).
 
