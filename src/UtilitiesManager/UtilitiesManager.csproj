@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Application WPF : fenêtre de réglages et proposition de mise à jour. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- UtilitiesManager.exe est le lanceur, qui embarque cette application. -->
+    <AssemblyName>UtilitiesManager.App</AssemblyName>
+    <RootNamespace>UtilitiesManager</RootNamespace>
+    <AssemblyTitle>UtilitiesManager</AssemblyTitle>
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Thème Fluent (Application.ThemeMode) : API encore marquée expérimentale. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <!-- Exe unique sans runtime embarqué : le lanceur vérifie que le runtime .NET
+       Desktop 10 est installé avant de démarrer l'application. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UtilitiesManager.Core\UtilitiesManager.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\assets\icon.ico" Link="assets\icon.ico" />
+  </ItemGroup>
+
+</Project>

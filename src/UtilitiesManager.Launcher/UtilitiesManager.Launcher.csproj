@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Lanceur UtilitiesManager.exe, seul fichier livré. En .NET Framework 4.8 (présent
+       sur tout Windows 10 et 11) : il vérifie le runtime .NET Desktop 10 (et propose de
+       l'installer), extrait l'application UtilitiesManager.App.exe qu'il embarque, puis
+       la démarre. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>UtilitiesManager</AssemblyName>
+    <RootNamespace>UtilitiesManager.Launcher</RootNamespace>
+    <AssemblyTitle>UtilitiesManager</AssemblyTitle>
+    <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Compile Include="..\Shared\Switches.cs" Link="Switches.cs" />
+    <Compile Include="..\Shared\AppLocations.cs" Link="AppLocations.cs" />
+    <Compile Include="..\Shared\L.cs" Link="L.cs" />
+    <Compile Include="..\Shared\FrenchCatalog.cs" Link="FrenchCatalog.cs" />
+  </ItemGroup>
+
+  <!-- Application publiée, passée par build.cmd (-p:AppExe=...). Sans elle, le lanceur
+       démarre l'application déjà présente dans %LOCALAPPDATA%\UtilitiesManager. -->
+  <ItemGroup Condition="'$(AppExe)' != ''">
+    <EmbeddedResource Include="$(AppExe)" LogicalName="UtilitiesManager.App.exe" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Logique sans interface : versions, Chocolatey, signature, registre, GitHub,
+       installation, réglages, textes, modèles de vue (sans référence à WPF). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>UtilitiesManager</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Textes (classe L, interne) partagés avec l'application et les tests. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="UtilitiesManager.App" />
+    <InternalsVisibleTo Include="UtilitiesManager.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Switches.cs" Link="Switches.cs" />
+    <Compile Include="..\Shared\AppLocations.cs" Link="AppLocations.cs" />
+    <Compile Include="..\Shared\L.cs" Link="L.cs" />
+    <Compile Include="..\Shared\FrenchCatalog.cs" Link="FrenchCatalog.cs" />
+  </ItemGroup>
+
+</Project>

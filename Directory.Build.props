@@ -1,0 +1,21 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)Versions.props" />
+
+  <!-- Réglages communs à tous les projets de la solution. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>$(UtilitiesManagerVersion)</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Authors>Jean Browaeys</Authors>
+    <Product>UtilitiesManager</Product>
+    <NeutralLanguage>fr-FR</NeutralLanguage>
+    <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- Pas de fichiers de débogage dans le livrable. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+</Project>
