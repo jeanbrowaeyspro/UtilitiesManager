@@ -26,8 +26,6 @@
     <Compile Include="..\..\src\UtilitiesManager.Launcher\RuntimeCheck.cs" Link="Launcher\RuntimeCheck.cs" />
     <Compile Include="..\..\src\UtilitiesManager.Launcher\CommandLine.cs" Link="Launcher\CommandLine.cs" />
     <Compile Include="..\..\src\UtilitiesManager.Launcher\EmbeddedApp.cs" Link="Launcher\EmbeddedApp.cs" />
-    <Compile Include="..\..\src\Shared\Switches.cs" Link="Launcher\Switches.cs" />
-    <Compile Include="..\..\src\Shared\AppLocations.cs" Link="Launcher\AppLocations.cs" />
   </ItemGroup>
 
   <ItemGroup>

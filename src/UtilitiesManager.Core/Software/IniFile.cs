@@ -14,7 +14,8 @@ namespace UtilitiesManager.Software;
 /// </remarks>
 public static partial class IniFile
 {
-    [GeneratedRegex(@"^[ \t]*\[(?<name>[^\]\r\n]*)\][ \t]*\r?$", RegexOptions.Multiline)]
+    // Le BOM d'un fichier UTF-16 reste en tête du texte : il précède la première section.
+    [GeneratedRegex(@"^﻿?[ \t]*\[(?<name>[^\]\r\n]*)\][ \t]*\r?$", RegexOptions.Multiline)]
     private static partial Regex SectionHeader();
 
     private static Regex KeyLine(string key) =>

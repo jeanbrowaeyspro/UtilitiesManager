@@ -40,12 +40,10 @@ public sealed class VersionCache(string root)
             Directory.Delete(current, recursive: true);
         }
         Directory.CreateDirectory(current);
-        string? kept = null;
+        // Seul le nom du fichier est enregistré : le dossier glisse de current à previous.
+        var kept = file is null ? null : Path.GetFileName(file);
         if (file is not null)
-        {
-            kept = Path.Combine(current, Path.GetFileName(file));
-            File.Copy(file, kept, overwrite: true);
-        }
+            File.Copy(file, Path.Combine(current, kept!), overwrite: true);
         File.WriteAllText(Path.Combine(current, InfoFile), JsonSerializer.Serialize(new CachedVersion(version, kept)));
     }
 
@@ -60,11 +58,6 @@ public sealed class VersionCache(string root)
         if (Directory.Exists(current))
             Directory.Delete(current, recursive: true);
         Directory.Move(previous, current);
-        if (Read(current) is { File: { } file } info)
-        {
-            var moved = Path.Combine(current, Path.GetFileName(file));
-            File.WriteAllText(Path.Combine(current, InfoFile), JsonSerializer.Serialize(info with { File = moved }));
-        }
     }
 
     public void Forget(string id)
@@ -79,7 +72,8 @@ public sealed class VersionCache(string root)
         var info = Path.Combine(folder, InfoFile);
         try
         {
-            return File.Exists(info) ? JsonSerializer.Deserialize<CachedVersion>(File.ReadAllText(info)) : null;
+            var cached = File.Exists(info) ? JsonSerializer.Deserialize<CachedVersion>(File.ReadAllText(info)) : null;
+            return cached?.File is { } name ? cached with { File = Path.Combine(folder, Path.GetFileName(name)) } : cached;
         }
         catch (Exception exc) when (exc is JsonException or IOException)
         {
