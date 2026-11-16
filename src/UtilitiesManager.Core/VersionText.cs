@@ -20,6 +20,21 @@ public static partial class VersionText
         return new Version(v.Major, v.Minor, Math.Max(v.Build, 0), Math.Max(v.Revision, 0));
     }
 
+    /// <summary>
+    /// Comparaison de deux versions écrites : numérique si les deux se lisent, sinon textuelle (égalité seule
+    /// significative).
+    /// </summary>
+    public static int Compare(string? a, string? b)
+    {
+        if (Parse(a) is { } x && Parse(b) is { } y)
+            return x.CompareTo(y);
+        return string.Compare(a?.Trim(), b?.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Vrai si <paramref name="candidate"/> est plus récente que <paramref name="installed"/>.</summary>
+    public static bool IsNewer(string? candidate, string? installed) =>
+        !string.IsNullOrWhiteSpace(candidate) && (string.IsNullOrWhiteSpace(installed) || Compare(candidate, installed) > 0);
+
     /// <summary>Affichage court : composantes nulles de fin retirées au-delà de trois.</summary>
     public static string Display(Version version) =>
         version.Revision > 0 ? version.ToString() : version.ToString(3);

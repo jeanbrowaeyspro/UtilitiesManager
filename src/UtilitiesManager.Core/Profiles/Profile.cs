@@ -182,9 +182,6 @@ public sealed class TweakEntry
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
-    public string? NameEn { get; set; }
-    /// <summary>Appliqué sur chaque PC avec le profil.</summary>
-    public bool Enabled { get; set; } = true;
     /// <summary>Redémarrage de l'Explorateur après application ou rétablissement.</summary>
     public bool RestartExplorer { get; set; }
     public List<RegistrySetting> Values { get; set; } = [];
