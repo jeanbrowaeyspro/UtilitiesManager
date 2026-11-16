@@ -51,6 +51,15 @@ public sealed class MachineState
         Managed.Add(program);
     }
 
+    /// <summary>Relit le fichier, écrit entre-temps par un autre processus (installations en administrateur).</summary>
+    public void Reload(string path)
+    {
+        var saved = Load(path);
+        FirstSeen = saved.FirstSeen;
+        InstalledVersions = saved.InstalledVersions;
+        Managed = saved.Managed;
+    }
+
     public void Forget(string id)
     {
         Managed.RemoveAll(p => p.Id == id);

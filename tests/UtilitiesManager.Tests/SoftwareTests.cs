@@ -85,6 +85,29 @@ public class SoftwareTests
     }
 
     [Fact]
+    public async Task BatchPausesResumesAndStopsThroughTheElevatedProtocol()
+    {
+        var control = new BatchControl();
+        ElevatedProtocol.Apply(ElevatedProtocol.Pause, control);
+        var waiting = control.WaitIfPausedAsync();
+        Assert.False(waiting.IsCompleted);
+        ElevatedProtocol.Apply(ElevatedProtocol.Order(control) == ElevatedProtocol.Pause ? ElevatedProtocol.Resume : "", control);
+        await waiting.WaitAsync(TimeSpan.FromSeconds(1));
+        control.Pause();
+        ElevatedProtocol.Apply(ElevatedProtocol.Stop, control);
+        Assert.True(control.WaitIfPausedAsync().IsCompleted);
+        Assert.True(control.StopToken.IsCancellationRequested);
+        Assert.Equal(ElevatedProtocol.Stop, ElevatedProtocol.Order(control));
+
+        var removed = new InstalledInfo(true, "1.2", "\"C:\\Outil\\uninst.exe\"");
+        var line = ElevatedProtocol.Write(new ElevatedRequest(new Profile().ToJson(), [new(Fixtures.Winget("outil"), removed)]));
+        Assert.DoesNotContain('\n', line);
+        var request = ElevatedProtocol.Read<ElevatedRequest>(line);
+        Assert.Equal("outil", request.Items[0].Program.Id);
+        Assert.Equal(removed, request.Items[0].Removed);
+    }
+
+    [Fact]
     public void StateFollowsInstallationAgeAndBlockedVersion()
     {
         var defaults = new ProfileDefaults { Mode = Modes.Confirm, MinAgeDays = 5 };
