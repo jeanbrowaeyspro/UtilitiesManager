@@ -75,7 +75,8 @@ public sealed class AppController
         {
             Services.Setup.Install(launcher, Settings);
         }
-        _tray = new TrayIcon(ShowMainWindow, () => _ = CheckAsync(manual: true), Quit, Settings.TrayIcon);
+        _tray = new TrayIcon(ShowMainWindow, () => _ = CheckAsync(manual: true), Quit, Settings.TrayIcon,
+                             () => Batch, PauseOrResume, StopBatch);
         if (!args.Startup)
             ShowMainWindow();
         ShowNewsAfterUpdate(args.Startup);
@@ -266,7 +267,7 @@ public sealed class AppController
             var auto = Last.AutoUpdates(profile.Defaults).Select(s => s.Program).ToList();
             if (auto.Count > 0)
             {
-                var (done, failed) = await _actions.RunAsync(auto, Last, profile, Report);
+                var (done, failed) = await RunBatchAsync(auto, Last, profile);
                 var doneNames = string.Join(", ", done.Select(p => p.Name));
                 _tray?.Notify(AppPaths.AppName, failed.Count == 0
                     ? L.T("Updated: {0}", doneNames)
@@ -331,7 +332,7 @@ public sealed class AppController
             return;
         try
         {
-            var (_, failed) = await _actions.RunAsync(chosen.Select(s => s.Program), last, profile, Report);
+            var (_, failed) = await RunBatchAsync(chosen.Select(s => s.Program), last, profile);
             if (failed.Count > 0)
                 Dialogs.Error(L.T("Failed: {0}\n\nSee the log below the list.", string.Join(", ", failed.Select(f => f.Program.Name))));
         }
@@ -340,6 +341,52 @@ public sealed class AppController
             End();
         }
         await CheckAsync(manual: true);
+    }
+
+    /// <summary>Série d'installations en cours (pause, arrêt), null en dehors.</summary>
+    public BatchControl? Batch { get; private set; }
+
+    private async Task<(List<ProgramEntry> Done, List<(ProgramEntry Program, string Message)> Failed)> RunBatchAsync(
+        IEnumerable<ProgramEntry> programs, CheckResult last, Profile profile)
+    {
+        Batch = new BatchControl();
+        Batch.Changed += () => StateChanged?.Invoke();
+        StateChanged?.Invoke();
+        try
+        {
+            return await _actions.RunAsync(programs, last, profile, Report, Batch);
+        }
+        finally
+        {
+            Batch = null;
+            StateChanged?.Invoke();
+        }
+    }
+
+    /// <summary>Met en pause la série en cours (après le logiciel en cours) ou la reprend.</summary>
+    public void PauseOrResume()
+    {
+        if (Batch is not { Stopped: false } batch)
+            return;
+        if (batch.Paused)
+        {
+            Note(L.T("Installations resumed."));
+            batch.Resume();
+        }
+        else
+        {
+            Note(L.T("Pause: the installations wait after the current software."));
+            batch.Pause();
+        }
+    }
+
+    /// <summary>Arrête la série en cours : le logiciel en cours va jusqu'au bout, les suivants ne sont pas traités.</summary>
+    public void StopBatch()
+    {
+        if (Batch is not { Stopped: false } batch)
+            return;
+        Note(L.T("Stop: the current software finishes, the next ones are not processed."));
+        batch.Stop();
     }
 
     public bool CanRevert(ProgramStatus status) => Services.Installer.CanRevert(status.Program);
@@ -395,12 +442,18 @@ public sealed class AppController
 
     private void Report(string text, double? fraction)
     {
+        Note(text);
+        Progress?.Invoke(fraction);
+    }
+
+    /// <summary>Ligne du journal, sans toucher à la barre d'avancement.</summary>
+    private void Note(string text)
+    {
         Log.Info(text);
         _recent.Add(text);
         if (_recent.Count > 500)
             _recent.RemoveRange(0, 100);
         LogLine?.Invoke(text);
-        Progress?.Invoke(fraction);
     }
 
     // ---- Réglages Windows ------------------------------------------------------------------------------------

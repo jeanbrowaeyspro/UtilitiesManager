@@ -25,37 +25,82 @@ public sealed class SoftwareActions(AppServices services)
 
     /// <summary>
     /// Installe, met à jour ou désinstalle (logiciel retiré du profil) chaque logiciel, dans l'ordre des
-    /// dépendances, un à la fois (Windows n'accepte qu'une installation MSI à la fois) ; les fichiers des logiciels
-    /// suivants se téléchargent pendant ce temps. Renvoie les logiciels réussis et ceux en échec avec leur message.
+    /// dépendances. À partir de deux logiciels, la série est confiée à un processus administrateur : une seule
+    /// demande d'élévation pour toute la série (sauf Microsoft Store, qui s'installe mal en administrateur, traité
+    /// ici ensuite) ; refusée, chaque installeur la demande lui-même comme avant. <paramref name="control"/> met en
+    /// pause ou arrête la série. Renvoie les logiciels réussis et ceux en échec avec leur message.
     /// </summary>
     public async Task<(List<ProgramEntry> Done, List<(ProgramEntry Program, string Message)> Failed)> RunAsync(
-        IEnumerable<ProgramEntry> chosen, CheckResult last, Profile profile, Action<string, double?> report)
+        IEnumerable<ProgramEntry> chosen, CheckResult last, Profile profile, Action<string, double?> report, BatchControl control)
     {
-        var programs = InstallService.Order(chosen);
+        var items = InstallService.Order(chosen)
+            .Select(p => new ElevatedItem(p, last.Programs.FirstOrDefault(s => s.Program.Id == p.Id) is { State: ProgramState.Removed } s
+                                                 ? s.Installed : null))
+            .ToList();
         var done = new List<ProgramEntry>();
         var failed = new List<(ProgramEntry, string)>();
-        bool Removed(ProgramEntry program) =>
-            last.Programs.FirstOrDefault(p => p.Program.Id == program.Id)?.State == ProgramState.Removed;
+        var here = items;
+        var elevated = items.Where(i => i.Program.Source != Sources.MsStore).ToList();
+        if (elevated.Count >= 2 && !ElevatedRunner.IsAdministrator
+            && await ElevatedRunner.RunAsync(elevated, profile, Scaled(report, 0, elevated.Count, items.Count), control) is { } result)
+        {
+            services.State.Reload(services.Paths.StateFile);
+            var byId = elevated.ToDictionary(i => i.Program.Id, i => i.Program);
+            done.AddRange(result.Done!.Select(id => byId[id]));
+            failed.AddRange(result.Failed!.Select(f => (byId[f.Id], f.Message)));
+            here = items.Except(elevated).ToList();
+        }
+        var offset = items.Count - here.Count;
+        var (hereDone, hereFailed) = await RunHereAsync(here, profile, Scaled(report, offset, here.Count, items.Count), control);
+        done.AddRange(hereDone);
+        failed.AddRange(hereFailed);
+        var skipped = items.Count - done.Count - failed.Count;
+        if (control.Stopped && skipped > 0)
+            report(L.T("Stopped: {0} software not processed.", skipped), 1);
+        return (done, failed);
+    }
+
+    /// <summary>Avancement d'une partie de la série ramené à la série entière.</summary>
+    private static Action<string, double?> Scaled(Action<string, double?> report, int offset, int count, int total) =>
+        (text, fraction) => report(text, fraction is { } value ? (offset + value * count) / total : null);
+
+    /// <summary>
+    /// Mène la série dans ce processus, un logiciel à la fois (Windows n'accepte qu'une installation MSI à la fois) ;
+    /// les fichiers des logiciels suivants se téléchargent pendant ce temps. Pause et arrêt prennent effet entre
+    /// deux logiciels.
+    /// </summary>
+    public async Task<(List<ProgramEntry> Done, List<(ProgramEntry Program, string Message)> Failed)> RunHereAsync(
+        IReadOnlyList<ElevatedItem> items, Profile profile, Action<string, double?> report, BatchControl control)
+    {
+        var done = new List<ProgramEntry>();
+        var failed = new List<(ProgramEntry, string)>();
         // Le premier logiciel se télécharge à son tour, avec sa progression ; les suivants à l'avance.
         using var slots = new SemaphoreSlim(ParallelDownloads);
-        var ahead = programs.Skip(1).Where(p => !Removed(p) && InstallService.CanDownloadAhead(p))
-                            .ToDictionary(p => p, p => DownloadAheadAsync(p, slots));
+        var ahead = items.Skip(1).Where(i => i.Removed is null && InstallService.CanDownloadAhead(i.Program))
+                         .ToDictionary(i => i.Program, i => DownloadAheadAsync(i.Program, slots, control));
         try
         {
-            for (var i = 0; i < programs.Count; i++)
+            for (var i = 0; i < items.Count; i++)
             {
-                var program = programs[i];
+                await control.WaitIfPausedAsync();
+                if (control.Stopped)
+                    break;
+                var (program, removed) = items[i];
                 var index = i;
                 var progress = new Progress<InstallStep>(step =>
-                    report($"{step.Program} : {step.Text}", (index + (step.Fraction ?? 0)) / programs.Count));
-                var status = last.Programs.FirstOrDefault(p => p.Program.Id == program.Id);
+                    report($"{step.Program} : {step.Text}", (index + (step.Fraction ?? 0)) / items.Count));
                 var download = ahead.GetValueOrDefault(program);
                 InstallOutcome outcome;
                 try
                 {
-                    outcome = status?.State == ProgramState.Removed
-                        ? await services.Installer.UninstallAsync(program, status.Installed, progress)
+                    outcome = removed is not null
+                        ? await services.Installer.UninstallAsync(program, removed, progress)
                         : await services.Installer.InstallAsync(program, profile, progress, download);
+                }
+                catch (OperationCanceledException) when (control.Stopped)
+                {
+                    // Son téléchargement à l'avance a été annulé par l'arrêt : rien n'a été installé.
+                    break;
                 }
                 catch (Exception exc) when (exc is not OutOfMemoryException)
                 {
@@ -80,23 +125,25 @@ public sealed class SoftwareActions(AppServices services)
             if (outcome.Succeeded)
             {
                 done.Add(program);
-                report(L.T("{0}: done.", program.Name), (i + 1.0) / programs.Count);
+                report(L.T("{0}: done.", program.Name), (i + 1.0) / items.Count);
             }
             else
             {
                 var message = outcome.Message ?? L.T("cancelled");
                 failed.Add((program, message));
-                report(L.T("{0}: {1}", program.Name, message), (i + 1.0) / programs.Count);
+                report(L.T("{0}: {1}", program.Name, message), (i + 1.0) / items.Count);
             }
         }
     }
 
-    private async Task<Download> DownloadAheadAsync(ProgramEntry program, SemaphoreSlim slots)
+    /// <summary>Téléchargement à l'avance : attend la fin d'une pause pour commencer, annulé par l'arrêt.</summary>
+    private async Task<Download> DownloadAheadAsync(ProgramEntry program, SemaphoreSlim slots, BatchControl control)
     {
-        await slots.WaitAsync().ConfigureAwait(false);
+        await control.WaitIfPausedAsync().ConfigureAwait(false);
+        await slots.WaitAsync(control.StopToken).ConfigureAwait(false);
         try
         {
-            return await services.Installer.DownloadAheadAsync(program).ConfigureAwait(false);
+            return await services.Installer.DownloadAheadAsync(program, control.StopToken).ConfigureAwait(false);
         }
         finally
         {
@@ -110,6 +157,10 @@ public sealed class SoftwareActions(AppServices services)
         try
         {
             (await download.ConfigureAwait(false)).Discard();
+        }
+        catch (OperationCanceledException)
+        {
+            // Arrêt demandé : le dossier a déjà été supprimé.
         }
         catch (Exception exc) when (exc is not OutOfMemoryException)
         {

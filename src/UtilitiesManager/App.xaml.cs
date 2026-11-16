@@ -20,6 +20,13 @@ public partial class App : Application
         var settings = AppSettings.Load(paths.SettingsFile);
         L.Use(settings.Language);
 
+        if (e.Args is [Switches.Elevated, var pipe])
+        {
+            var silent = new SilentDialogs(TextWriter.Null);
+            Shutdown(await ElevatedRunner.ServeAsync(new AppServices(paths, settings, silent), pipe));
+            return;
+        }
+
         if (CliCommand.IsCommand(e.Args))
         {
             Shutdown(await RunCommandAsync(paths, settings, e.Args));

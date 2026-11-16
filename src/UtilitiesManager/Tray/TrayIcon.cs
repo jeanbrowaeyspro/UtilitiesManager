@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using UtilitiesManager.Software;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
@@ -7,7 +8,8 @@ namespace UtilitiesManager;
 
 /// <summary>
 /// Icône de la zone de notifications : nombre d'actions en attente dessiné sur l'icône, clic gauche ouvre la
-/// fenêtre, menu Ouvrir / Vérifier maintenant / Quitter, notifications. Masquable dans Paramètres : elle n'apparaît
+/// fenêtre, menu Ouvrir / Vérifier maintenant / Quitter (avec Pause et Arrêter pendant une série d'installations),
+/// notifications. Masquable dans Paramètres : elle n'apparaît
 /// alors que le temps d'une notification.
 /// </summary>
 public sealed class TrayIcon : IDisposable
@@ -15,17 +17,23 @@ public sealed class TrayIcon : IDisposable
     private readonly Action _open;
     private readonly Action _check;
     private readonly Action _quit;
+    private readonly Func<BatchControl?> _batch;
+    private readonly Action _pause;
+    private readonly Action _stop;
     private readonly Forms.NotifyIcon _icon;
     private readonly Drawing.Icon _image;
     private Drawing.Icon? _badge;
     private Action? _clicked;
     private bool _wanted;
 
-    public TrayIcon(Action open, Action check, Action quit, bool visible)
+    public TrayIcon(Action open, Action check, Action quit, bool visible, Func<BatchControl?> batch, Action pause, Action stop)
     {
         _open = open;
         _check = check;
         _quit = quit;
+        _batch = batch;
+        _pause = pause;
+        _stop = stop;
         using (var stream = Application.GetResourceStream(new Uri(Ui.IconUri)).Stream)
             _image = new Drawing.Icon(stream, Forms.SystemInformation.SmallIconSize);
         _icon = new Forms.NotifyIcon { Icon = _image, Text = AppInfo.Title };
@@ -81,6 +89,14 @@ public sealed class TrayIcon : IDisposable
         var menu = new TrayMenu(ThemeManager.CurrentIsDark);
         menu.AddItem(L.T("Open"), _image, _open, bold: true);
         menu.AddItem(L.T("Check now"), "", _check);
+        var pause = menu.AddItem(L.T("Pause"), "", _pause);
+        var stop = menu.AddItem(L.T("Stop the installations"), "", _stop);
+        menu.Opening += (_, _) =>
+        {
+            var batch = _batch();
+            pause.Visible = stop.Visible = batch is { Stopped: false };
+            pause.Text = batch is { Paused: true } ? L.T("Resume") : L.T("Pause");
+        };
         menu.AddSeparator();
         menu.AddItem(L.T("Quit"), "", _quit);
         var old = _icon.ContextMenuStrip;

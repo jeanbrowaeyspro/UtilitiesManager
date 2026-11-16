@@ -15,6 +15,8 @@ internal static class Switches
     public const string AfterInstall = "/installation";
     /// <summary>Suivi du chemin complet du lanceur (fichier copié à l'installation).</summary>
     public const string Launcher = "/lanceur";
+    /// <summary>Processus administrateur d'une série d'installations, suivi du nom du canal nommé.</summary>
+    public const string Elevated = "/eleve";
 
     /// <summary>
     /// Commandes du pilotage en ligne de commande (premier argument) : l'application les exécute sans fenêtre et

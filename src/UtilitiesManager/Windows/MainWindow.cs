@@ -38,6 +38,8 @@ public sealed class MainWindow : ThemedWindow
     };
     private readonly List<Button> _actions = [];
     private Button? _revert;
+    private Button? _install;
+    private Button? _pause;
 
     public MainWindow(AppController controller)
     {
@@ -154,7 +156,20 @@ public sealed class MainWindow : ThemedWindow
         _programs.MouseDoubleClick += (_, _) => _ = EditAsync();
 
         var buttons = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
-        buttons.Children.Add(Action(L.T("Install / update"), () => _ = InstallAsync(), 150));
+        // Pendant une série : "Arrêter" à la place, et "Pause" / "Reprendre" à côté.
+        _install = Ui.TextButton(L.T("Install / update"), () =>
+        {
+            if (_controller.Batch is null)
+                _ = InstallAsync();
+            else
+                _controller.StopBatch();
+        }, 150);
+        _install.Margin = new Thickness(0, 0, 8, 6);
+        buttons.Children.Add(_install);
+        _pause = Ui.TextButton(L.T("Pause"), _controller.PauseOrResume);
+        _pause.Margin = new Thickness(0, 0, 8, 6);
+        _pause.Visibility = Visibility.Collapsed;
+        buttons.Children.Add(_pause);
         buttons.Children.Add(Action(L.T("Check now"), () => _ = _controller.CheckAsync(manual: true)));
         buttons.Children.Add(Action(L.T("Add…"), () => _ = AddAsync()));
         buttons.Children.Add(Action(L.T("Change…"), () => _ = EditAsync()));
@@ -455,6 +470,15 @@ public sealed class MainWindow : ThemedWindow
     {
         foreach (var button in _actions)
             button.IsEnabled = !_controller.Busy;
+        var batch = _controller.Batch;
+        if (_install is not null && _pause is not null)
+        {
+            _install.Content = batch is null ? L.T("Install / update") : L.T("Stop");
+            _install.IsEnabled = batch is null ? !_controller.Busy : !batch.Stopped;
+            _pause.Visibility = batch is null ? Visibility.Collapsed : Visibility.Visible;
+            _pause.Content = batch is { Paused: true } ? L.T("Resume") : L.T("Pause");
+            _pause.IsEnabled = batch is { Stopped: false };
+        }
         if (_revert is not null)
             _revert.IsEnabled = !_controller.Busy && Current is { } row && _controller.CanRevert(row.Status);
     }

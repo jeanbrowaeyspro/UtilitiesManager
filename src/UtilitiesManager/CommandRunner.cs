@@ -114,7 +114,24 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
             var row = new ProgramRow(targets[0], profile.Defaults);
             return Fail($"{row.Name} : {row.State}", targets[0].State == ProgramState.UpToDate ? CliCommand.ExitOk : CliCommand.ExitPending);
         }
-        var (done, failed) = await _actions.RunAsync(targets.Select(t => t.Program), last, profile, Progress);
+        // Ctrl+C : arrêt après le logiciel en cours.
+        var control = new BatchControl();
+        ConsoleCancelEventHandler stop = (_, e) =>
+        {
+            e.Cancel = true;
+            control.Stop();
+        };
+        Console.CancelKeyPress += stop;
+        List<ProgramEntry> done;
+        List<(ProgramEntry Program, string Message)> failed;
+        try
+        {
+            (done, failed) = await _actions.RunAsync(targets.Select(t => t.Program), last, profile, Progress, control);
+        }
+        finally
+        {
+            Console.CancelKeyPress -= stop;
+        }
         var after = await _actions.CheckAsync(profile);
         if (_json)
         {
