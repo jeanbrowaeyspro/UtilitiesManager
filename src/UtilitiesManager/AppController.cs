@@ -441,15 +441,9 @@ public sealed class AppController
         _tray?.SetPending(PendingCount);
         if (_window is { } window)
         {
-            var bounds = window.RestoreBounds;
             _window = null;
             window.Close();
             ShowMainWindow();
-            if (!bounds.IsEmpty)
-            {
-                _window!.Left = bounds.Left;
-                _window.Top = bounds.Top;
-            }
         }
     }
 

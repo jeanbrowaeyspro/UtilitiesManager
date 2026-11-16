@@ -1,5 +1,11 @@
 # Nouveautés
 
+## [0.0.3] - 2026-11-16
+
+### Corrigé
+- Erreur "le thread appelant ne peut pas accéder à cet objet" à la fin de la connexion à GitHub.
+- La fenêtre se rouvre à sa dernière position, sur le même écran, avec sa taille et son état agrandi.
+
 ## [0.0.2] - 2026-11-16
 
 ### Ajouté

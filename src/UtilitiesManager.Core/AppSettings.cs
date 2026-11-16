@@ -32,6 +32,8 @@ public sealed class AppSettings
     public List<string> DeclinedUninstalls { get; set; } = [];
     /// <summary>Dernière version lancée : nouveautés proposées après une mise à jour.</summary>
     public string? LastSeenVersion { get; set; }
+    /// <summary>Position, taille et état de la fenêtre principale à sa dernière fermeture.</summary>
+    public WindowPlacement? MainWindow { get; set; }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -60,3 +62,6 @@ public sealed class AppSettings
     /// <summary>Écriture atomique : pas de fichier tronqué si l'application est fermée pendant l'écriture.</summary>
     public void Save(string path) => AtomicFile.WriteAllText(path, ToJson());
 }
+
+/// <summary>Position et taille d'une fenêtre (unités WPF), état agrandi.</summary>
+public sealed record WindowPlacement(double Left, double Top, double Width, double Height, bool Maximized);

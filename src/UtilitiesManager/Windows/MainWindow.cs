@@ -48,6 +48,7 @@ public sealed class MainWindow : ThemedWindow
         MinWidth = 700;
         MinHeight = 450;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        RestorePlacement(controller.Settings.MainWindow);
 
         var tabs = new TabControl { Margin = new Thickness(12, 4, 12, 0) };
         tabs.Items.Add(new TabItem { Header = L.T("Software"), Content = BuildProgramsTab() });
@@ -75,13 +76,14 @@ public sealed class MainWindow : ThemedWindow
         _controller.StateChanged += Refresh;
         _controller.LogLine += AppendLog;
         _controller.Progress += ShowProgress;
-        _controller.Services.Account.Changed += BuildSettings;
+        _controller.Services.Account.Changed += OnAccountChanged;
+        Closing += (_, _) => SavePlacement();
         Closed += (_, _) =>
         {
             _controller.StateChanged -= Refresh;
             _controller.LogLine -= AppendLog;
             _controller.Progress -= ShowProgress;
-            _controller.Services.Account.Changed -= BuildSettings;
+            _controller.Services.Account.Changed -= OnAccountChanged;
         };
         Refresh();
     }
@@ -309,6 +311,9 @@ public sealed class MainWindow : ThemedWindow
 
     // ---- Paramètres ------------------------------------------------------------------------------------------
 
+    /// <summary>Connexion ou déconnexion, signalée depuis n'importe quel thread : page refaite sur celui de la fenêtre.</summary>
+    private void OnAccountChanged() => Dispatcher.BeginInvoke(BuildSettings);
+
     private void BuildSettings()
     {
         var settings = _controller.Settings;
@@ -357,6 +362,35 @@ public sealed class MainWindow : ThemedWindow
         var heading = Ui.Heading(title, 16);
         heading.Margin = new Thickness(0, 8, 0, 10);
         return heading;
+    }
+
+    // ---- Position de la fenêtre ------------------------------------------------------------------------------
+
+    /// <summary>Reprend la dernière position (écran compris) si elle est encore visible sur un écran branché.</summary>
+    private void RestorePlacement(WindowPlacement? placement)
+    {
+        const double Margin = 50;
+        if (placement is null
+            || placement.Left + placement.Width < SystemParameters.VirtualScreenLeft + Margin
+            || placement.Left > SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Margin
+            || placement.Top < SystemParameters.VirtualScreenTop
+            || placement.Top > SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Margin)
+            return;
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = placement.Left;
+        Top = placement.Top;
+        Width = Math.Max(placement.Width, MinWidth);
+        Height = Math.Max(placement.Height, MinHeight);
+        if (placement.Maximized)
+            SourceInitialized += (_, _) => WindowState = WindowState.Maximized;
+    }
+
+    private void SavePlacement()
+    {
+        var bounds = RestoreBounds;
+        if (!bounds.IsEmpty)
+            Save(() => _controller.Settings.MainWindow =
+                new WindowPlacement(bounds.Left, bounds.Top, bounds.Width, bounds.Height, WindowState == WindowState.Maximized));
     }
 
     private void Save(Action change)
