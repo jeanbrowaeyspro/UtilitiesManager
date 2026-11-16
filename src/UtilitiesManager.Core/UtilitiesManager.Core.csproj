@@ -20,4 +20,9 @@
     <Compile Include="..\Shared\FrenchCatalog.cs" Link="FrenchCatalog.cs" />
   </ItemGroup>
 
+  <!-- Réglages Windows connus, relevés sur un PC pour remplir le profil. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Software\TweakCatalog.json" LogicalName="UtilitiesManager.Software.TweakCatalog.json" />
+  </ItemGroup>
+
 </Project>

@@ -4,7 +4,8 @@ using UtilitiesManager.GitHub;
 namespace UtilitiesManager.Profiles;
 
 /// <summary>Profil chargé : depuis GitHub ou la copie locale, avec l'erreur rencontrée éventuelle.</summary>
-public sealed record ProfileLoad(Profile? Profile, bool FromCache, string? Error);
+/// <summary>Profil lu ; <paramref name="RepositoryMissing"/> : dépôt du compte introuvable ou sans accès pour l'app.</summary>
+public sealed record ProfileLoad(Profile? Profile, bool FromCache, string? Error, bool RepositoryMissing = false);
 
 /// <summary>État du dépôt du profil sur le compte connecté.</summary>
 public enum ProfileAccess
@@ -48,6 +49,7 @@ public sealed class ProfileStore(AppPaths paths, Func<string> owner, Func<string
         if (Repository is null)
             return new ProfileLoad(LoadCache() ?? new Profile(), true, null);
         string? error;
+        var missing = false;
         try
         {
             using var client = Client();
@@ -60,16 +62,18 @@ public sealed class ProfileStore(AppPaths paths, Func<string> owner, Func<string
             }
             error = L.T("The profile on GitHub is invalid, nothing is applied from it:") + Environment.NewLine + string.Join(Environment.NewLine, errors);
         }
-        catch (GitHubException exc) when (exc.Failure is GitHubFailure.NotFound or GitHubFailure.NoToken)
+        catch (GitHubException exc) when (exc.Failure is GitHubFailure.NotFound)
         {
-            error = L.T("Profile not reachable on GitHub: sign in to GitHub or import a profile.");
+            missing = true;
+            error = L.T("Repository {0} not found or not accessible: Settings > Create the repository.", Repository);
         }
         catch (Exception exc) when (exc is GitHubException or HttpRequestException or TaskCanceledException or IOException)
         {
             error = L.T("Profile not reachable on GitHub: {0}", exc.Message);
         }
         Log.Error(error);
-        return LoadCache() is { } cached ? new ProfileLoad(cached, true, error) : new ProfileLoad(null, true, error);
+        // Dépôt pas encore créé : profil vide sur ce PC en attendant, comme sans compte.
+        return new ProfileLoad(LoadCache() ?? (missing ? new Profile() : null), true, error, missing);
     }
 
     /// <summary>Copie locale, null si elle manque ou est invalide.</summary>

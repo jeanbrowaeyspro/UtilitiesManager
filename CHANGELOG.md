@@ -2,7 +2,11 @@
 
 ## [0.0.4] - 2026-11-16
 
+### Ajouté
+- Réglages Windows : bouton "Relever sur ce PC", qui ajoute au profil les réglages connus déjà modifiés sur ce PC (menu contextuel classique, extensions visibles, thème sombre...).
+
 ### Corrigé
+- Compte GitHub connecté sans dépôt UtilitiesProfile : message "Dépôt introuvable" et bouton "Créer le dépôt" dans Paramètres, au lieu de "Profil injoignable, se connecter".
 - Connexion à GitHub : la page ne s'ouvre plus d'elle-même, seulement par "Copier et ouvrir GitHub" (elle s'ouvrait deux fois).
 
 ## [0.0.3] - 2026-11-16

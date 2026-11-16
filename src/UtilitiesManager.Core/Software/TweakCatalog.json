@@ -1,0 +1,61 @@
+[
+  {
+    "id": "classic-context-menu",
+    "name": "Classic context menu",
+    "restart_explorer": true,
+    "values": [
+      { "key": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\\InprocServer32",
+        "name": "", "type": "string", "value": "",
+        "restore_delete_key": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" }
+    ]
+  },
+  {
+    "id": "show-extensions-hidden",
+    "name": "File extensions and hidden files visible",
+    "restart_explorer": true,
+    "values": [
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "HideFileExt", "type": "dword", "value": "0", "restore": "1" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "Hidden", "type": "dword", "value": "1", "restore": "2" }
+    ]
+  },
+  {
+    "id": "explorer-this-pc",
+    "name": "File Explorer opens on This PC",
+    "values": [
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "LaunchTo", "type": "dword", "value": "1" }
+    ]
+  },
+  {
+    "id": "taskbar-left",
+    "name": "Taskbar on the left, without widgets or search",
+    "restart_explorer": true,
+    "values": [
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarAl", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarDa", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Search", "name": "SearchboxTaskbarMode", "type": "dword", "value": "0" }
+    ]
+  },
+  {
+    "id": "dark-theme",
+    "name": "Dark theme",
+    "values": [
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "name": "AppsUseLightTheme", "type": "dword", "value": "0", "restore": "1" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "name": "SystemUsesLightTheme", "type": "dword", "value": "0", "restore": "1" }
+    ]
+  },
+  {
+    "id": "no-suggestions",
+    "name": "No Windows suggestions or ads",
+    "values": [
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338388Enabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338389Enabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353694Enabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353696Enabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SystemPaneSuggestionsEnabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SilentInstalledAppsEnabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SoftLandingEnabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ShowSyncProviderNotifications", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "Start_IrisRecommendations", "type": "dword", "value": "0" }
+    ]
+  }
+]

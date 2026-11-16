@@ -276,6 +276,7 @@ public sealed class MainWindow : ThemedWindow
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
         buttons.Children.Add(Action(L.T("Apply"), () => ChangeTweaks(apply: true)));
         buttons.Children.Add(Action(L.T("Restore"), () => ChangeTweaks(apply: false)));
+        buttons.Children.Add(Action(L.T("Capture from this PC"), () => _ = _controller.CaptureTweaksAsync()));
         var panel = new DockPanel { Margin = new Thickness(20, 16, 20, 10) };
         DockPanel.SetDock(buttons, Dock.Bottom);
         panel.Children.Add(buttons);
@@ -332,6 +333,8 @@ public sealed class MainWindow : ThemedWindow
             ? Ui.TextButton(L.T("Sign out"), account.SignOut)
             : Ui.TextButton(L.T("Sign in"), SignIn));
         _settings.Children.Add(Ui.Row(L.T("GitHub account"), github));
+        if (account.IsSignedIn && _controller.ProfileRepositoryMissing)
+            _settings.Children.Add(Ui.Row(L.T("Profile repository"), Ui.TextButton(L.T("Create the repository"), () => _ = _controller.ConnectProfileAsync())));
         _settings.Children.Add(Ui.Row(L.T("Profile file"), Ui.TextButton(L.T("Import…"), () => _ = ImportAsync())));
         if (_controller.Profile is { } profile)
         {

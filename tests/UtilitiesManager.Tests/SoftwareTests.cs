@@ -182,7 +182,7 @@ public class SoftwareTests
     }
 
     [Fact]
-    public void WindowsSettingIsAppliedAndRestored()
+    public void WindowsSettingIsAppliedRestoredAndCapturedFromTheCatalog()
     {
         var registry = new FakeRegistry();
         var tweaks = new WindowsTweaks(registry);
@@ -207,5 +207,11 @@ public class SoftwareTests
         Assert.False(tweaks.IsApplied(tweak));
         Assert.False(registry.HasKey(RegistryRoot.CurrentUser, $@"{clsid}\InprocServer32"));
         Assert.Equal(1, registry.GetValue(RegistryRoot.CurrentUser, @"Software\Outil", "Recherche"));
+
+        // Catalogue (traductions contrôlées avec les autres textes) : valide, seuls les réglages posés sont relevés.
+        var catalog = TweakCatalog.Load();
+        Assert.Empty(ProfileValidator.Validate(new Profile { Tweaks = catalog }));
+        tweaks.Apply(catalog.Single(c => c.Id == "dark-theme"));
+        Assert.Equal(["dark-theme"], catalog.Where(tweaks.IsApplied).Select(c => c.Id));
     }
 }

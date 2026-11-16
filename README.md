@@ -20,7 +20,7 @@ runtime .NET Desktop 10 et propose de l'installer s'il manque.
   Cocher puis "Installer / mettre à jour". Par logiciel : mode (automatique ou à valider), âge minimum d'une
   version, version bloquée, retour à la version précédente.
 - **Réglages Windows** : appliquer ou rétablir les réglages du profil (menu contextuel classique, extensions
-  visibles, barre des tâches...).
+  visibles, barre des tâches...). "Relever sur ce PC" ajoute au profil les réglages connus déjà modifiés sur ce PC.
 - **Paramètres** : profil, connexion GitHub, lancement au démarrage, raccourcis, thème et langue.
 - L'icône de notification indique le nombre d'actions en attente. La vérification a lieu à l'ouverture de
   session, puis chaque jour, ou à la demande ("Vérifier maintenant").

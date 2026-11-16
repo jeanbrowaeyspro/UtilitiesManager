@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using UtilitiesManager.GitHub;
+using UtilitiesManager.Software;
 using UtilitiesManager.Launcher;
 using UtilitiesManager.Updates;
 using UtilitiesManager.ViewModels;
@@ -24,6 +25,7 @@ public partial class ToolTests
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
             .SelectMany(f => TextKey().Matches(File.ReadAllText(f)))
             .Select(m => Regex.Unescape(m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value))
+            .Concat(TweakCatalog.Load().Select(t => t.Name))
             .Distinct().ToList();
 
         Assert.True(keys.Count > 200);

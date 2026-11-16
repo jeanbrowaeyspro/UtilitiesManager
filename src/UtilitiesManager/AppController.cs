@@ -45,6 +45,8 @@ public sealed class AppController
 
     /// <summary>Origine du profil affiché (dépôt, copie locale, ou erreur).</summary>
     public string ProfileOrigin { get; private set; } = "";
+    /// <summary>Compte connecté mais dépôt du profil introuvable ou sans accès : création guidée à proposer.</summary>
+    public bool ProfileRepositoryMissing { get; private set; }
 
     public CheckResult? Last { get; private set; }
 
@@ -125,10 +127,12 @@ public sealed class AppController
     private async Task LoadProfileAsync()
     {
         var load = await Services.Profiles.LoadAsync();
+        ProfileRepositoryMissing = load.RepositoryMissing;
         if (load.Profile is not null)
         {
             Profile = load.Profile;
             ProfileOrigin = Services.Profiles.Repository is null ? L.T("Profile: on this PC (no GitHub account)")
+                : load.RepositoryMissing ? load.Error!
                 : load.FromCache ? L.T("Profile: local copy ({0})", load.Error ?? L.T("repository unreachable"))
                 : L.T("Profile: GitHub repository {0}", Services.Profiles.Repository);
         }
@@ -395,6 +399,26 @@ public sealed class AppController
     // ---- Réglages Windows ------------------------------------------------------------------------------------
 
     public bool IsApplied(TweakEntry tweak) => Services.Tweaks.IsApplied(tweak);
+
+    /// <summary>
+    /// Ajoute au profil, après confirmation, les réglages du catalogue déjà posés sur ce PC et absents du profil.
+    /// </summary>
+    public async Task CaptureTweaksAsync()
+    {
+        if (Profile is null)
+            return;
+        var known = Profile.Tweaks.Select(t => t.Id).ToHashSet();
+        var found = TweakCatalog.Load().Where(t => !known.Contains(t.Id) && IsApplied(t)).ToList();
+        if (found.Count == 0)
+        {
+            Dialogs.Info(L.T("No other known Windows setting is changed on this PC."));
+            return;
+        }
+        foreach (var tweak in found)
+            tweak.Name = L.T(tweak.Name);
+        if (Dialogs.Confirm(L.T("Add these settings of this PC to the profile?\n\n{0}", string.Join("\n", found.Select(t => "- " + t.Name)))))
+            await EditProfileAsync(p => p.Tweaks.AddRange(found), "Réglages Windows relevés sur ce PC");
+    }
 
     /// <summary>Applique ou rétablit les réglages choisis ; redémarre l'Explorateur si l'un d'eux le demande.</summary>
     public void ChangeTweaks(IReadOnlyList<TweakEntry> tweaks, bool apply)
