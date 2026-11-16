@@ -1,0 +1,98 @@
+# Publication d'une version de UtilitiesManager : pousser une étiquette vX.Y.n (version d'essai, branche essai,
+# Release marquée préversion) ou vX.Y (livraison, branche main).
+# L'étiquette doit correspondre à Versions.props (vX.Y.n -> X.Y.n, vX.Y -> X.Y.0) et CHANGELOG.md doit avoir la
+# rubrique de la version, reprise comme notes de la Release. Tests (livraison), compilation, puis Release GitHub
+# avec l'exe et son empreinte SHA-256 (lue par la mise à jour de l'outil).
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v5
+
+      # Le SDK .NET 10 de l'image Windows évite son téléchargement : installé seulement s'il manque.
+      - name: SDK .NET 10 de l'image
+        id: sdk
+        run: |
+          $sdks = dotnet --list-sdks 2>$null
+          $present = [bool]($sdks | Where-Object { $_ -match '^10\.' })
+          Write-Output "SDK présents :`n$($sdks -join "`n")"
+          "present=$($present.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+      - name: Installation du SDK .NET 10
+        if: steps.sdk.outputs.present != 'true'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Version de l'étiquette
+        id: version
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v(\d+)\.(\d+)(\.(\d+))?$') {
+            throw "Étiquette '$tag' invalide : vX.Y.n (essai) ou vX.Y (livraison) attendu"
+          }
+          $essai = [bool]$Matches[3]
+          if ($essai -and [int]$Matches[4] -eq 0) {
+            throw "Étiquette '$tag' : une version d'essai a un troisième indice non nul, une livraison s'écrit vX.Y"
+          }
+          $version = if ($essai) { $tag.Substring(1) } else { "$($tag.Substring(1)).0" }
+          $props = [xml](Get-Content Versions.props -Raw)
+          $attendue = "$($props.Project.PropertyGroup.UtilitiesManagerVersion)".Trim()
+          if ($version -ne $attendue) { throw "Étiquette $tag ($version) différente de Versions.props ($attendue)" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$($essai.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+      - name: Notes de version
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $notes = @()
+          $dedans = $false
+          $trouvee = $false
+          foreach ($ligne in Get-Content CHANGELOG.md -Encoding utf8) {
+            if ($ligne -match '^##\s') {
+              if ($dedans) { break }
+              $dedans = $ligne -match ('^##\s+\[?v?' + [regex]::Escape($version) + '\]?(\s|$)')
+              $trouvee = $trouvee -or $dedans
+              continue
+            }
+            if ($dedans) { $notes += $ligne }
+          }
+          if (-not $trouvee) { throw "Rubrique $version absente de CHANGELOG.md" }
+          $texte = ($notes -join "`n").Trim()
+          if (-not $texte) { throw "Rubrique $version de CHANGELOG.md vide" }
+          New-Item -ItemType Directory -Force build | Out-Null
+          Set-Content build/notes.md $texte -Encoding utf8
+
+      # Version d'essai : tests déjà passés sur le poste avant l'étiquette. Livraison : tests relancés.
+      - name: Tests
+        if: steps.version.outputs.prerelease != 'true'
+        run: dotnet test UtilitiesManager.slnx -c Release
+
+      - name: Compilation
+        shell: cmd
+        run: build.cmd
+
+      - name: Création de la GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $fichiers = @("dist/UtilitiesManager.exe", "dist/UtilitiesManager.exe.sha256")
+          foreach ($f in $fichiers) { if (-not (Test-Path $f)) { throw "$f absent" } }
+          $options = @("--title", "UtilitiesManager ${{ steps.version.outputs.version }}", "--notes-file", "build/notes.md", "--verify-tag")
+          if ("${{ steps.version.outputs.prerelease }}" -eq "true") { $options += "--prerelease" }
+          gh release create "${{ github.ref_name }}" @fichiers @options
+          if ($LASTEXITCODE -ne 0) { throw "Échec de la création de la release" }

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UtilitiesManager.Core/UtilitiesManager.Core.csproj" />
+    <Project Path="src/UtilitiesManager.Launcher/UtilitiesManager.Launcher.csproj" />
+    <Project Path="src/UtilitiesManager/UtilitiesManager.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UtilitiesManager.Tests/UtilitiesManager.Tests.csproj" />
+  </Folder>
+</Solution>

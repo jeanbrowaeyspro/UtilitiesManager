@@ -27,10 +27,10 @@ public partial class ToolTests
             .Distinct().ToList();
 
         Assert.True(keys.Count > 200);
-        Assert.Empty(keys.Where(k => !FrenchCatalog.Texts.ContainsKey(k)));
+        Assert.DoesNotContain(keys, k => !FrenchCatalog.Texts.ContainsKey(k));
         Assert.Empty(FrenchCatalog.Texts.Keys.Except(keys));
-        Assert.Empty(FrenchCatalog.Texts.Where(t =>
-            !Placeholder().Matches(t.Key).Select(m => m.Value).Order().SequenceEqual(Placeholder().Matches(t.Value).Select(m => m.Value).Order())));
+        Assert.DoesNotContain(FrenchCatalog.Texts, t =>
+            !Placeholder().Matches(t.Key).Select(m => m.Value).Order().SequenceEqual(Placeholder().Matches(t.Value).Select(m => m.Value).Order()));
     }
 
     [Fact]
