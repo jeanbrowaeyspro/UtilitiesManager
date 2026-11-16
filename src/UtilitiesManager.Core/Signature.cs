@@ -9,11 +9,12 @@ namespace UtilitiesManager;
 /// <param name="Error">Raison du refus de Windows, si la signature n'est pas valide.</param>
 public sealed record SignatureCheck(bool Trusted, string? Signer, string? Thumbprint, string? Error)
 {
-    /// <summary>Signataire des installeurs officiels de FileZilla.</summary>
-    public const string ExpectedSigner = "Tim Kosse";
-
-    /// <summary>Vrai si l'installeur peut être lancé : signature valide de <see cref="ExpectedSigner"/>.</summary>
-    public bool Accepted => Trusted && Signer == ExpectedSigner;
+    /// <summary>
+    /// Vrai si l'installeur peut être lancé : signature valide et, si le profil en attend
+    /// un, signataire <paramref name="expectedSigner"/>.
+    /// </summary>
+    public bool Accepts(string? expectedSigner) =>
+        Trusted && (string.IsNullOrEmpty(expectedSigner) || string.Equals(Signer, expectedSigner, StringComparison.Ordinal));
 
     public override string ToString() =>
         $"{(Trusted ? "valide" : $"non valide ({Error})")}, signataire {Signer ?? "aucun"}, empreinte {Thumbprint ?? "aucune"}";

@@ -4,12 +4,12 @@ using System.Text;
 namespace UtilitiesManager;
 
 /// <summary>
-/// Une seule instance par session Windows : mutex Local\TwinCATPlus_SingleInstance (attendu aussi par
+/// Une seule instance par session Windows : mutex Local\UtilitiesManager_SingleInstance (attendu aussi par
 /// l'installeur) et canal nomme par lequel une seconde instance passe sa ligne de commande a la premiere.
 /// </summary>
 public sealed class SingleInstance : IDisposable
 {
-    public const string DefaultName = "TwinCATPlus_SingleInstance";
+    public const string DefaultName = "UtilitiesManager_SingleInstance";
 
     private readonly string _name;
     private readonly Mutex _mutex;

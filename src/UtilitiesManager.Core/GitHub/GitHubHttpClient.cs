@@ -2,11 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace UtilitiesManager.Updates;
+namespace UtilitiesManager.GitHub;
 
 /// <summary>
-/// Base des clients GitHub : HTTPS, User-Agent TwinCATPlus/&lt;version&gt;, delai limite, erreurs classees
-/// en <see cref="GitHubFailure"/>. Le jeton est fourni par l'appelant (vide : aucune requete authentifiee).
+/// Base des clients GitHub : HTTPS, User-Agent UtilitiesManager/&lt;version&gt;, delai limite, erreurs classees
+/// en <see cref="GitHubFailure"/>. Le jeton est fourni par l'appelant (vide : requetes anonymes, depots publics).
 /// </summary>
 public abstract class GitHubHttpClient : IDisposable
 {
@@ -67,11 +67,6 @@ public abstract class GitHubHttpClient : IDisposable
     protected async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string accept, CancellationToken cancellation,
         HttpContent? content = null, bool authenticated = true, bool whole = true)
     {
-        if (authenticated && !HasToken)
-        {
-            throw new GitHubException(GitHubFailure.NoToken, "Aucun jeton GitHub : requête impossible");
-        }
-
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         if (whole)
         {
@@ -82,7 +77,11 @@ public abstract class GitHubHttpClient : IDisposable
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
         if (authenticated)
         {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            if (HasToken)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            }
+
             request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
         }
 

@@ -23,7 +23,7 @@ public sealed class Setup(AppPaths paths, IRegistryStore registry, IShortcutWrit
     /// <summary>
     /// Première vérification après l'installation : lanceur installé avec
     /// <c>/demarrage</c>, comme à l'ouverture de session, et <c>/installation</c> pour
-    /// proposer d'installer FileZilla s'il est absent.
+    /// proposer d'installer les logiciels du profil absents du poste.
     /// </summary>
     public ProcessStartInfo StartupCheck =>
         new(paths.InstalledLauncher, $"{Switches.Startup} {Switches.AfterInstall}")

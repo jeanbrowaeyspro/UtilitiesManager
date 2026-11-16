@@ -40,12 +40,12 @@ public sealed class SignInException(SignInFailure failure, string message) : Exc
 }
 
 /// <summary>
-/// Connexion a GitHub par le flux d'appareil d'une application GitHub de l'organisation LBLBRENTA : code affiche,
+/// Connexion a GitHub par le flux d'appareil de l'application GitHub de UtilitiesManager : code affiche,
 /// autorisation dans le navigateur, attente du jeton. Aucun secret embarque : seul le Client ID (public) est connu.
 /// </summary>
 public sealed class GitHubSignIn : GitHubHttpClient
 {
-    /// <summary>Client ID de l'application GitHub de connexion de l'organisation LBLBRENTA.</summary>
+    /// <summary>Client ID public de l'application GitHub de UtilitiesManager ; vide tant qu'elle n'est pas creee.</summary>
     public const string ApplicationClientId = "";
 
     private const string TokenUrl = "https://github.com/login/oauth/access_token";

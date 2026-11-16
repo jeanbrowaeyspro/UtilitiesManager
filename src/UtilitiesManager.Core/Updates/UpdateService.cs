@@ -1,177 +1,86 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
+using UtilitiesManager.GitHub;
 
 namespace UtilitiesManager.Updates;
 
-/// <summary>Version plus recente trouvee sur GitHub, avec son installeur et son empreinte.</summary>
-public sealed record AvailableUpdate(SemVersion Version, GitHubRelease Release, GitHubAsset Installer, GitHubAsset Checksum)
+/// <summary>Version plus récente de UtilitiesManager trouvée sur GitHub, avec son lanceur et son empreinte.</summary>
+public sealed record AvailableUpdate(SemVersion Version, GitHubRelease Release, GitHubAsset Launcher, GitHubAsset Checksum)
 {
-    /// <summary>
-    /// Vrai si une des versions entre l'installee (exclue) et celle-ci (incluse) a une rubrique Extension dans ses
-    /// notes : l'installeur recopiera l'extension, TwinCAT doit etre ferme.
-    /// </summary>
-    public bool ChangesExtension { get; init; }
-
     public string Notes => Release.Body ?? string.Empty;
 }
 
 /// <summary>
-/// Mises a jour de l'application par les Releases GitHub : quand verifier, quelle version proposer,
-/// telechargement verifie par SHA-256, lancement silencieux de l'installeur.
+/// Mises à jour de UtilitiesManager par les releases GitHub de son dépôt public : quand chercher, quelle version
+/// proposer, téléchargement vérifié par SHA-256. Jamais silencieuse : l'application propose, Jean valide.
 /// </summary>
-public sealed partial class UpdateService
+public sealed class UpdateService(GitHubRepositoryClient client)
 {
-    /// <summary>Depot GitHub prive de TwinCATPlus (proprietaire/depot).</summary>
-    public const string Repository = "LBLBRENTA/TwinCATPlus";
+    /// <summary>Dépôt public de l'outil (propriétaire/dépôt).</summary>
+    public const string Repository = "jeanbrowaeyspro/UtilitiesManager";
 
-    public const string InstallerPrefix = "TwinCATPlus-Setup-";
-    public const string ChecksumSuffix = ".sha256";
+    public const string LauncherAsset = AppPaths.LauncherFileName;
+    public const string ChecksumAsset = LauncherAsset + ".sha256";
 
-    /// <summary>Arguments de l'installeur Inno Setup en silencieux.</summary>
-    public const string SilentArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-";
+    /// <summary>Jamais deux recherches automatiques à moins d'une heure d'écart.</summary>
+    public static readonly TimeSpan MinimumInterval = TimeSpan.FromHours(1);
 
-    private const string LogSource = "Mises à jour";
-
-    /// <summary>Jamais deux recherches automatiques a moins d'une heure d'ecart.</summary>
-    private static readonly TimeSpan MinimumInterval = TimeSpan.FromHours(1);
-
-    private readonly GitHubReleasesClient _client;
-    private readonly AppLog _log;
-
-    public UpdateService(GitHubReleasesClient client, AppLog log)
-    {
-        _client = client;
-        _log = log;
-    }
-
-    public GitHubReleasesClient Client => _client;
-
-    /// <summary>Faut-il une recherche automatique maintenant ?</summary>
-    public static bool IsCheckDue(UpdateSettings settings, DateTime now, bool atStartup)
-    {
-        if (!settings.AutoCheck)
-        {
-            return false;
-        }
-
-        var last = settings.LastCheck;
-        if (last is not null && now - last.Value < MinimumInterval)
-        {
-            return false;
-        }
-
-        return settings.Frequency switch
-        {
-            UpdateFrequency.Daily => atStartup || last is null || now - last.Value >= TimeSpan.FromDays(1),
-            UpdateFrequency.Weekly => atStartup || last is null || now - last.Value >= TimeSpan.FromDays(7),
-            _ => atStartup,
-        };
-    }
+    public static bool IsCheckDue(DateTimeOffset? last, DateTimeOffset now) => last is null || now - last.Value >= MinimumInterval;
 
     /// <summary>
-    /// Recherche une version plus recente que <paramref name="current"/>. Une version ignoree n'est proposee
-    /// qu'a une recherche manuelle. Null si l'application est a jour.
+    /// Version plus récente que <paramref name="current"/>, null si l'application est à jour. Une version ignorée
+    /// n'est proposée qu'à une recherche manuelle.
     /// </summary>
-    public async Task<AvailableUpdate?> CheckAsync(SemVersion current, UpdateSettings settings, bool manual, CancellationToken cancellation = default)
+    public async Task<AvailableUpdate?> CheckAsync(SemVersion current, bool includePrereleases, string? skippedVersion, bool manual,
+                                                   CancellationToken cancellation = default)
     {
-        var releases = await _client.GetReleasesAsync(cancellation: cancellation).ConfigureAwait(false);
-        var best = SelectUpdate(releases, current, settings.IncludePrereleases);
+        var releases = await client.GetReleasesAsync(cancellation: cancellation).ConfigureAwait(false);
+        var best = SelectUpdate(releases, current, includePrereleases);
         if (best is null)
         {
-            _log.Info(LogSource, $"Version {current} à jour");
+            Log.Info($"UtilitiesManager {current} à jour");
             return null;
         }
-
-        if (!manual && string.Equals(settings.SkippedVersion, best.Version.ToString(), StringComparison.OrdinalIgnoreCase))
+        if (!manual && string.Equals(skippedVersion, best.Version.ToString(), StringComparison.OrdinalIgnoreCase))
         {
-            _log.Info(LogSource, $"Version {best.Version} disponible mais ignorée à la demande de l'utilisateur");
+            Log.Info($"UtilitiesManager {best.Version} disponible mais ignorée");
             return null;
         }
-
-        _log.Info(LogSource, $"Version {best.Version} disponible (version installée {current})");
+        Log.Info($"UtilitiesManager {best.Version} disponible (version installée {current})");
         return best;
     }
 
-    /// <summary>Plus haute release superieure a <paramref name="current"/> qui porte un installeur et son empreinte.</summary>
+    /// <summary>Plus haute release supérieure à <paramref name="current"/> qui porte le lanceur et son empreinte.</summary>
     public static AvailableUpdate? SelectUpdate(IEnumerable<GitHubRelease> releases, SemVersion current, bool includePrereleases)
     {
         AvailableUpdate? best = null;
         foreach (var release in releases)
         {
-            if (release.Draft || (release.Prerelease && !includePrereleases) || !SemVersion.TryParse(release.TagName, out var version))
-            {
+            if (release.Draft || !SemVersion.TryParse(release.TagName, out var version)
+                || ((release.Prerelease || version.IsTestVersion) && !includePrereleases)
+                || version <= current || (best is not null && version <= best.Version))
                 continue;
-            }
-
-            if (version.IsTestVersion && !includePrereleases)
-            {
-                continue;
-            }
-
-            var installer = release.FindAsset(n => n.StartsWith(InstallerPrefix, StringComparison.OrdinalIgnoreCase)
-                && n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
-            var checksum = installer is null ? null : release.FindAsset(n => n.Equals(installer.Name + ChecksumSuffix, StringComparison.OrdinalIgnoreCase));
-            if (installer is null || checksum is null || version <= current || (best is not null && version <= best.Version))
-            {
-                continue;
-            }
-
-            best = new AvailableUpdate(version, release, installer, checksum);
+            var launcher = release.FindAsset(n => n.Equals(LauncherAsset, StringComparison.OrdinalIgnoreCase));
+            var checksum = release.FindAsset(n => n.Equals(ChecksumAsset, StringComparison.OrdinalIgnoreCase));
+            if (launcher is not null && checksum is not null)
+                best = new AvailableUpdate(version, release, launcher, checksum);
         }
-
-        if (best is null)
-        {
-            return null;
-        }
-
-        var changesExtension = releases.Any(r => SemVersion.TryParse(r.TagName, out var v) && v > current && v <= best.Version
-            && ExtensionHeading().IsMatch(r.Body ?? string.Empty));
-        return best with { ChangesExtension = changesExtension };
+        return best;
     }
 
-    /// <summary>Telecharge l'installeur et verifie son empreinte. Renvoie le chemin de l'installeur.</summary>
-    public async Task<string> DownloadAsync(AvailableUpdate update, string folder, IProgress<double>? progress = null, CancellationToken cancellation = default)
+    /// <summary>Télécharge le lanceur vers <paramref name="destination"/> et vérifie son empreinte et son en-tête.</summary>
+    public async Task DownloadAsync(AvailableUpdate update, string destination, IProgress<double>? progress = null,
+                                    CancellationToken cancellation = default)
     {
-        var expected = ParseChecksum(await _client.ReadAssetTextAsync(update.Checksum, cancellation).ConfigureAwait(false));
-        if (expected is null)
+        var expected = ParseChecksum(await client.ReadAssetTextAsync(update.Checksum, cancellation).ConfigureAwait(false))
+                       ?? throw new UpdateException(L.T("The SHA-256 checksum of the update is unreadable."));
+        await client.DownloadAssetAsync(update.Launcher, destination, progress, cancellation).ConfigureAwait(false);
+        var actual = ComputeSha256(destination);
+        if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase) || !IsExecutable(destination))
         {
-            throw new UpdateException(UpdateFailure.ChecksumUnreadable, $"Empreinte {update.Checksum.Name} illisible");
+            File.Delete(destination);
+            throw new UpdateException(L.T("The downloaded file does not match its SHA-256 checksum, it was deleted."));
         }
-
-        var target = Path.Combine(folder, update.Installer.Name);
-        _log.Info(LogSource, $"Téléchargement de {update.Installer.Name} vers {folder}");
-        await _client.DownloadAssetAsync(update.Installer, target, progress, cancellation).ConfigureAwait(false);
-        var actual = ComputeSha256(target);
-        if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
-        {
-            File.Delete(target);
-            throw new UpdateException(UpdateFailure.ChecksumMismatch,
-                $"Empreinte fausse pour {update.Installer.Name} : attendue {expected}, obtenue {actual}, fichier supprimé");
-        }
-
-        _log.Info(LogSource, $"Empreinte SHA-256 vérifiée pour {update.Installer.Name}");
-        return target;
-    }
-
-    /// <summary>
-    /// Lance l'installeur en silencieux, sans elevation : il la demande lui-meme (PrivilegesRequired=admin) et garde
-    /// ainsi l'utilisateur d'origine pour relancer l'application sans droits administrateur (runasoriginaluser).
-    /// Faux si l'installeur n'a pas pu etre lance.
-    /// </summary>
-    public bool StartInstaller(string installer)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo(installer, SilentArguments) { UseShellExecute = true })?.Dispose();
-            _log.Info(LogSource, $"Installeur lancé : {installer} {SilentArguments}");
-            return true;
-        }
-        catch (System.ComponentModel.Win32Exception ex)
-        {
-            _log.Warning(LogSource, $"Installeur non lancé ({ex.Message})");
-            return false;
-        }
+        Log.Info($"Empreinte SHA-256 vérifiée pour {update.Launcher.Name} {update.Version}");
     }
 
     /// <summary>Empreinte d'un fichier .sha256 : "empreinte" ou "empreinte  nom" (format sha256sum).</summary>
@@ -181,29 +90,18 @@ public sealed partial class UpdateService
         return first is { Length: 64 } && first.All(Uri.IsHexDigit) ? first.ToLowerInvariant() : null;
     }
 
-    [GeneratedRegex(@"^###\s+" + Changelog.SectionExtension + @"\s*$", RegexOptions.Multiline)]
-    private static partial Regex ExtensionHeading();
-
     public static string ComputeSha256(string file)
     {
         using var stream = File.OpenRead(file);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
-}
 
-public enum UpdateFailure
-{
-    ChecksumUnreadable,
-    ChecksumMismatch,
-}
-
-public sealed class UpdateException : Exception
-{
-    public UpdateException(UpdateFailure failure, string message)
-        : base(message)
+    /// <summary>Vrai si le fichier commence par l'en-tête <c>MZ</c> d'un exécutable Windows.</summary>
+    public static bool IsExecutable(string path)
     {
-        Failure = failure;
+        using var file = File.OpenRead(path);
+        return file.Length > 2 && file.ReadByte() == 'M' && file.ReadByte() == 'Z';
     }
-
-    public UpdateFailure Failure { get; }
 }
+
+public sealed class UpdateException(string message) : Exception(message);

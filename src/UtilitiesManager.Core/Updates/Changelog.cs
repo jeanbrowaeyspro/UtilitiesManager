@@ -7,15 +7,11 @@ public sealed record ChangelogSection(string Title, IReadOnlyList<string> Lines)
 public sealed record ChangelogEntry(SemVersion Version, string Date, IReadOnlyList<ChangelogSection> Sections);
 
 /// <summary>
-/// CHANGELOG.md au format Keep a Changelog : "## [X.Y.Z] - AAAA-MM-JJ" puis des rubriques "### Application",
-/// "### Outils dans TwinCAT", "### Extension". Les versions sans numero (Non publie) sont ignorees.
+/// CHANGELOG.md au format Keep a Changelog : "## [X.Y.Z] - AAAA-MM-JJ" puis des rubriques "### Ajouté",
+/// "### Modifié"... Les versions sans numero (Non publie) sont ignorees.
 /// </summary>
 public static partial class Changelog
 {
-    public const string SectionApplication = "Application";
-    public const string SectionTools = "Outils dans TwinCAT";
-    public const string SectionExtension = "Extension";
-
     public static IReadOnlyList<ChangelogEntry> Parse(string markdown)
     {
         var entries = new List<ChangelogEntry>();
@@ -80,10 +76,6 @@ public static partial class Changelog
     /// <summary>Entrees plus recentes que <paramref name="previous"/>, jusqu'a <paramref name="current"/> inclus.</summary>
     public static IReadOnlyList<ChangelogEntry> Between(IEnumerable<ChangelogEntry> entries, SemVersion? previous, SemVersion current) =>
         entries.Where(e => (previous is null || e.Version > previous) && e.Version <= current).ToList();
-
-    /// <summary>Vrai si une des entrees a une rubrique Extension (la nouvelle version change l'extension).</summary>
-    public static bool ChangesExtension(IEnumerable<ChangelogEntry> entries) =>
-        entries.Any(e => e.Sections.Any(s => s.Title == SectionExtension));
 
     [GeneratedRegex(@"^##\s+\[?(?<version>v?\d+(\.\d+){1,3}(-[0-9A-Za-z.-]+)?)\]?(\s*-\s*(?<date>\S+))?")]
     private static partial Regex VersionHeading();

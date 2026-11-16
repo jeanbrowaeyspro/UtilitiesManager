@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace UtilitiesManager;
 
 /// <summary>
-/// Options choisies dans la fenêtre de réglages, mémorisées dans
-/// <c>%APPDATA%\UtilitiesManager\settings.json</c> (clés en snake_case).
+/// Préférences propres au poste, mémorisées dans <c>%APPDATA%\UtilitiesManager\settings.json</c>
+/// (clés en snake_case). Tout ce qui vaut pour tous les PC est dans le profil.
 /// </summary>
 public sealed class AppSettings
 {
@@ -16,6 +16,22 @@ public sealed class AppSettings
     public string Theme { get; set; } = L.System;
     /// <summary>Langue : <c>system</c> (celle de Windows), <c>fr</c> ou <c>en</c>.</summary>
     public string Language { get; set; } = L.System;
+    /// <summary>Icône près de l'horloge.</summary>
+    public bool TrayIcon { get; set; } = true;
+    /// <summary>Nouveautés de la release affichées avant de valider une mise à jour.</summary>
+    public bool ShowReleaseNotes { get; set; } = true;
+    /// <summary>Versions d'essai (préversions GitHub) de UtilitiesManager proposées.</summary>
+    public bool IncludePrereleases { get; set; }
+    /// <summary>Version de UtilitiesManager ignorée : plus proposée automatiquement.</summary>
+    public string? SkippedVersion { get; set; }
+    /// <summary>Dernière recherche de mise à jour de UtilitiesManager (au plus une par heure).</summary>
+    public DateTimeOffset? LastUpdateCheck { get; set; }
+    /// <summary>Dernière vérification des logiciels (une par jour).</summary>
+    public DateTimeOffset? LastCheck { get; set; }
+    /// <summary>Logiciels retirés du profil dont la désinstallation a été refusée sur ce poste.</summary>
+    public List<string> DeclinedUninstalls { get; set; } = [];
+    /// <summary>Dernière version lancée : nouveautés proposées après une mise à jour.</summary>
+    public string? LastSeenVersion { get; set; }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,12 +57,6 @@ public sealed class AppSettings
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
 
-    public void Save(string path)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        // Écriture atomique : pas de fichier tronqué si l'application est fermée pendant l'écriture.
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, ToJson());
-        File.Move(temp, path, overwrite: true);
-    }
+    /// <summary>Écriture atomique : pas de fichier tronqué si l'application est fermée pendant l'écriture.</summary>
+    public void Save(string path) => AtomicFile.WriteAllText(path, ToJson());
 }

@@ -21,6 +21,14 @@ public sealed record AppPaths(
     public string InstalledLauncher => Path.Combine(InstallDir, LauncherFileName);
     public string ExtractedApp => AppLocations.ExtractedApp(DataDir);
     public string LogFile => Path.Combine(DataDir, "journal.log");
+    /// <summary>Copie locale du dernier profil valide : sert hors ligne.</summary>
+    public string ProfileCache => Path.Combine(DataDir, "profile.json");
+    /// <summary>État du poste : premières dates vues des versions, logiciels connus, versions précédentes.</summary>
+    public string StateFile => Path.Combine(DataDir, "state.json");
+    /// <summary>Installeurs gardés pour revenir à la version précédente.</summary>
+    public string CacheDir => Path.Combine(DataDir, "cache");
+    /// <summary>Connexion GitHub, chiffrée (DPAPI).</summary>
+    public string CredentialFile => Path.Combine(DataDir, "github.bin");
     public string DesktopShortcut => Path.Combine(DesktopDir, ShortcutFileName);
     public string StartMenuShortcut => Path.Combine(StartMenuDir, ShortcutFileName);
 

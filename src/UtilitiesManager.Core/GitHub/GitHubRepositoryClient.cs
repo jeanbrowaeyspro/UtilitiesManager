@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace UtilitiesManager.Updates;
+namespace UtilitiesManager.GitHub;
 
 public sealed record GitHubAsset(
     [property: JsonPropertyName("name")] string Name,
@@ -54,10 +54,10 @@ public sealed class GitHubException : Exception
 }
 
 /// <summary>
-/// Client des Releases d'un depot GitHub prive, partage par la coquille (mises a jour, jeton en lecture seule) et
-/// les modules (bibliotheques, jeton du compte connecte : lecture et publication).
+/// Client d'un depot GitHub : Releases (mise a jour de UtilitiesManager, logiciels publies sur GitHub) et fichiers
+/// (profil prive, lu et modifie avec le jeton du compte connecte).
 /// </summary>
-public sealed class GitHubReleasesClient : GitHubHttpClient
+public sealed class GitHubRepositoryClient : GitHubHttpClient
 {
     private const string Api = "https://api.github.com";
 
@@ -65,7 +65,7 @@ public sealed class GitHubReleasesClient : GitHubHttpClient
 
     /// <param name="repository">"proprietaire/depot".</param>
     /// <param name="handler">Remplace la pile reseau dans les tests.</param>
-    public GitHubReleasesClient(string repository, string token, string userAgent, HttpMessageHandler? handler = null, TimeSpan? timeout = null)
+    public GitHubRepositoryClient(string repository, string token, string userAgent, HttpMessageHandler? handler = null, TimeSpan? timeout = null)
         : base(token, userAgent, handler, timeout)
     {
         _repository = repository;
@@ -127,46 +127,37 @@ public sealed class GitHubReleasesClient : GitHubHttpClient
         return user.TryGetProperty("login", out var login) ? login.GetString() ?? string.Empty : string.Empty;
     }
 
-    /// <summary>Vrai si l'etiquette existe deja dans le depot (Release publiee ou simple etiquette git).</summary>
-    public async Task<bool> TagExistsAsync(string tag, CancellationToken cancellation = default)
+    private string ContentsUrl(string path) =>
+        $"{RepositoryUrl}/contents/{string.Join('/', path.Split('/').Select(Uri.EscapeDataString))}";
+
+    /// <summary>Contenu brut d'un fichier du depot (branche par defaut), jusqu'a 100 Mo.</summary>
+    public async Task<byte[]> GetFileAsync(string path, CancellationToken cancellation = default)
+    {
+        using var response = await SendAsync(HttpMethod.Get, ContentsUrl(path), "application/vnd.github.raw+json", cancellation)
+            .ConfigureAwait(false);
+        return await response.Content.ReadAsByteArrayAsync(cancellation).ConfigureAwait(false);
+    }
+
+    /// <summary>Empreinte git (sha) du fichier, necessaire pour le remplacer ; null s'il n'existe pas.</summary>
+    public async Task<string?> GetFileShaAsync(string path, CancellationToken cancellation = default)
     {
         try
         {
-            using var response = await SendAsync(HttpMethod.Get, $"{RepositoryUrl}/git/ref/tags/{Uri.EscapeDataString(tag)}",
-                "application/vnd.github+json", cancellation).ConfigureAwait(false);
-            return true;
+            var file = await SendJsonAsync<JsonElement>(HttpMethod.Get, ContentsUrl(path), cancellation).ConfigureAwait(false);
+            return file.TryGetProperty("sha", out var sha) ? sha.GetString() : null;
         }
         catch (GitHubException ex) when (ex.Failure == GitHubFailure.NotFound)
         {
-            return false;
+            return null;
         }
     }
 
-    /// <summary>Cree une Release publiee et son etiquette (sur la branche par defaut du depot).</summary>
-    public Task<GitHubRelease> CreateReleaseAsync(string tag, string body, bool prerelease, CancellationToken cancellation = default) =>
-        SendJsonAsync<GitHubRelease>(HttpMethod.Post, $"{RepositoryUrl}/releases", cancellation,
-            JsonContent.Create(new { tag_name = tag, name = tag, body, draft = false, prerelease }));
-
-    /// <summary>Depose un fichier dans une Release, sous le nom <paramref name="name"/>.</summary>
-    public async Task UploadAssetAsync(long releaseId, string name, byte[] content, string contentType, CancellationToken cancellation = default)
+    /// <summary>Cree ou remplace un fichier du depot par un commit sur la branche par defaut.</summary>
+    public async Task PutFileAsync(string path, byte[] content, string message, CancellationToken cancellation = default)
     {
-        var body = new ByteArrayContent(content);
-        body.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        using var response = await SendAsync(HttpMethod.Post,
-            $"https://uploads.github.com/repos/{_repository}/releases/{releaseId}/assets?name={Uri.EscapeDataString(name)}",
-            "application/vnd.github+json", cancellation, body, whole: false).ConfigureAwait(false);
-    }
-
-    /// <summary>Supprime une Release puis son etiquette (une Release supprimee laisse son etiquette en place).</summary>
-    public async Task DeleteReleaseAsync(long releaseId, string tag, CancellationToken cancellation = default)
-    {
-        using (await SendAsync(HttpMethod.Delete, $"{RepositoryUrl}/releases/{releaseId}", "application/vnd.github+json", cancellation)
-            .ConfigureAwait(false))
-        {
-        }
-
-        using (await SendAsync(HttpMethod.Delete, $"{RepositoryUrl}/git/refs/tags/{Uri.EscapeDataString(tag)}",
-            "application/vnd.github+json", cancellation).ConfigureAwait(false))
+        var sha = await GetFileShaAsync(path, cancellation).ConfigureAwait(false);
+        using (await SendAsync(HttpMethod.Put, ContentsUrl(path), "application/vnd.github+json", cancellation,
+            JsonContent.Create(new { message, content = Convert.ToBase64String(content), sha })).ConfigureAwait(false))
         {
         }
     }
