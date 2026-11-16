@@ -7,7 +7,7 @@ namespace UtilitiesManager;
 
 /// <summary>
 /// Seule fenêtre de message de l'application (questions, informations, erreurs,
-/// proposition de mise à jour, attente de l'installation de FileZilla et message de fin) :
+/// proposition de mise à jour, attente d'une opération et message de fin) :
 /// thème Fluent de l'application, clair ou sombre, comme la fenêtre de réglages, y
 /// compris quand le thème de Windows change.
 /// </summary>
@@ -101,7 +101,7 @@ public partial class DialogWindow : Window
         _ => "",
     };
 
-    /// <summary>Pas de fermeture pendant une opération (installation de FileZilla en cours).</summary>
+    /// <summary>Pas de fermeture pendant une opération (installation en cours).</summary>
     protected override void OnClosing(CancelEventArgs e)
     {
         e.Cancel = !_viewModel.CanClose;

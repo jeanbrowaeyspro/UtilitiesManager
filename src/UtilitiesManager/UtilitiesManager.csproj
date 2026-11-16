@@ -5,6 +5,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Icône de la zone de notifications (NotifyIcon). -->
+    <UseWindowsForms>true</UseWindowsForms>
     <!-- UtilitiesManager.exe est le lanceur, qui embarque cette application. -->
     <AssemblyName>UtilitiesManager.App</AssemblyName>
     <RootNamespace>UtilitiesManager</RootNamespace>
@@ -12,7 +14,7 @@
     <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Thème Fluent (Application.ThemeMode) : API encore marquée expérimentale. -->
-    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <NoWarn>$(NoWarn);WPF0001;WFO0003</NoWarn>
   </PropertyGroup>
 
   <!-- Exe unique sans runtime embarqué : le lanceur vérifie que le runtime .NET
@@ -30,6 +32,18 @@
 
   <ItemGroup>
     <Resource Include="..\..\assets\icon.ico" Link="assets\icon.ico" />
+    <!-- Nouveautés (menu Aide) : CHANGELOG embarqué. -->
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
+  </ItemGroup>
+
+  <!-- WinForms n'est utilisé que pour l'icône de notifications : pas de conflit de noms avec WPF. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
+    <Using Include="UtilitiesManager.Theme" />
+    <Using Include="UtilitiesManager.ViewModels" />
   </ItemGroup>
 
 </Project>

@@ -21,6 +21,12 @@ public static class ThemeManager
     private static bool _listening;
     private static string _choice = System;
 
+    /// <summary>Thème appliqué changé (choix ou réglage de Windows) : menus dessinés en code à refaire.</summary>
+    public static event Action? ThemeChanged;
+
+    /// <summary>Vrai si le thème appliqué est sombre.</summary>
+    public static bool CurrentIsDark => IsDark(_choice);
+
     /// <summary>Vrai si Windows est réglé sur le thème sombre pour les applications.</summary>
     public static bool SystemIsDark()
     {
@@ -57,6 +63,7 @@ public static class ThemeManager
         var dark = IsDark(_choice);
         app.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
         ApplyBrushes(app.Resources, dark);
+        ThemeChanged?.Invoke();
     }
 
     /// <summary>Pinceaux propres à l'application pour le thème donné.</summary>

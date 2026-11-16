@@ -6,7 +6,7 @@ using System.Windows.Media.Imaging;
 
 namespace UtilitiesManager;
 
-/// <summary>Fenetre qui suit le theme : fond, texte et icone de l'application.</summary>
+/// <summary>Fenêtre qui suit le thème : fond, texte et icône de l'application.</summary>
 public class ThemedWindow : Window
 {
     public ThemedWindow()
@@ -23,12 +23,17 @@ public static class Ui
 {
     private static ImageSource? _appIcon;
 
+    /// <summary>Glyphes de Windows 11, ceux de Windows 10 à défaut.</summary>
+    public static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
+
+    public const string IconUri = "pack://application:,,,/UtilitiesManager.App;component/assets/icon.ico";
+
     public static ImageSource AppIcon => _appIcon ??= LoadIcon();
 
     public static TextBlock Glyph(string glyph, double size = 16)
     {
         var text = new TextBlock { Text = glyph, FontSize = size, VerticalAlignment = VerticalAlignment.Center };
-        text.SetResourceReference(TextBlock.FontFamilyProperty, "TcpIconFont");
+        text.FontFamily = IconFont;
         return text;
     }
 
@@ -38,7 +43,7 @@ public static class Ui
     public static TextBlock Muted(string text)
     {
         var block = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap };
-        block.SetResourceReference(TextBlock.ForegroundProperty, "TcpMutedTextBrush");
+        block.SetResourceReference(TextBlock.ForegroundProperty, "MutedTextBrush");
         return block;
     }
 
@@ -127,5 +132,5 @@ public static class Ui
 
     /// <summary>Icone multi-tailles : la barre de titre et la barre des taches choisissent leur image.</summary>
     private static ImageSource LoadIcon() =>
-        BitmapFrame.Create(new Uri("pack://application:,,,/TwinCATPlus;component/assets/icon.ico"));
+        BitmapFrame.Create(new Uri(IconUri));
 }

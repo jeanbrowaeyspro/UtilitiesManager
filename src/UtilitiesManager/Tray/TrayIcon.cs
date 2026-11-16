@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
@@ -5,88 +6,129 @@ using Forms = System.Windows.Forms;
 namespace UtilitiesManager;
 
 /// <summary>
-/// Icone de la zone de notifications : clic gauche ouvre la fenetre, clic droit le menu (Ouvrir, modules,
-/// Parametres, Rechercher les mises a jour, Quitter), notification d'une mise a jour disponible.
-/// Menu (<see cref="TrayMenu"/>) reconstruit au changement de langue et de theme.
+/// Icône de la zone de notifications : nombre d'actions en attente dessiné sur l'icône, clic gauche ouvre la
+/// fenêtre, menu Ouvrir / Vérifier maintenant / Quitter, notifications. Masquable dans Paramètres : elle n'apparaît
+/// alors que le temps d'une notification.
 /// </summary>
 public sealed class TrayIcon : IDisposable
 {
-    private readonly ShellController _shell;
+    private readonly Action _open;
+    private readonly Action _check;
+    private readonly Action _quit;
     private readonly Forms.NotifyIcon _icon;
     private readonly Drawing.Icon _image;
-    private AvailableUpdate? _notified;
+    private Drawing.Icon? _badge;
+    private Action? _clicked;
+    private bool _wanted;
 
-    public TrayIcon(ShellController shell)
+    public TrayIcon(Action open, Action check, Action quit, bool visible)
     {
-        _shell = shell;
-        using (var stream = Application.GetResourceStream(new Uri("pack://application:,,,/TwinCATPlus;component/assets/icon.ico")).Stream)
-        {
+        _open = open;
+        _check = check;
+        _quit = quit;
+        using (var stream = Application.GetResourceStream(new Uri(Ui.IconUri)).Stream)
             _image = new Drawing.Icon(stream, Forms.SystemInformation.SmallIconSize);
-        }
-
-        _icon = new Forms.NotifyIcon { Icon = _image, Text = $"TwinCATPlus {AppInfo.ProductVersion}" };
+        _icon = new Forms.NotifyIcon { Icon = _image, Text = AppInfo.Title };
         _icon.MouseClick += (_, e) =>
         {
             if (e.Button == Forms.MouseButtons.Left)
-            {
-                _shell.ShowMainWindow();
-            }
+                _open();
         };
         _icon.BalloonTipClicked += (_, _) =>
         {
-            if (_notified is not null)
-            {
-                _shell.Updates.ShowUpdate(_notified);
-            }
+            var clicked = _clicked;
+            _clicked = null;
+            _icon.Visible = _wanted;
+            clicked?.Invoke();
         };
+        _icon.BalloonTipClosed += (_, _) => _icon.Visible = _wanted;
         Rebuild();
-        _icon.Visible = true;
-        Tr.LanguageChanged += Rebuild;
+        Visible = visible;
         ThemeManager.ThemeChanged += Rebuild;
-        _shell.Registry.ModuleFailed += OnModuleFailed;
     }
 
-    private void OnModuleFailed(Modules.IModule module) => Rebuild();
-
-    /// <summary>Notification de la zone pour une version disponible (clic : dialogue de mise a jour).</summary>
-    public void NotifyUpdate(AvailableUpdate update)
+    public bool Visible
     {
-        _notified = update;
-        _icon.ShowBalloonTip(10000, Tr.T("TwinCATPlus update"), Tr.T("TwinCATPlus {0} is available", update.Version), Forms.ToolTipIcon.Info);
-    }
-
-    private void Rebuild()
-    {
-        var menu = new TrayMenu(ThemeManager.IsDark);
-        menu.AddItem(Tr.T("Open TwinCATPlus"), _image, () => _shell.ShowMainWindow(), bold: true);
-        if (_shell.Registry.Modules.Count > 0)
+        get => _wanted;
+        set
         {
-            menu.AddSeparator();
-            foreach (var module in _shell.Registry.Modules)
-            {
-                menu.AddItem(module.Title, module.IconGlyph, () => _shell.OpenModule(module));
-            }
+            _wanted = value;
+            _icon.Visible = value;
         }
+    }
 
-        menu.AddSeparator();
-        menu.AddItem(Tr.T("Settings"), "", () => _shell.OpenSettings());
-        menu.AddItem(Tr.T("Check for updates"), "", _shell.CheckUpdates);
-        menu.AddSeparator();
-        menu.AddItem(Tr.T("Quit"), "", _shell.Quit);
+    /// <summary>Nombre d'actions en attente : pastille sur l'icône et infobulle.</summary>
+    public void SetPending(int count)
+    {
+        var old = _badge;
+        _badge = count > 0 ? Badge(_image, count) : null;
+        _icon.Icon = _badge ?? _image;
+        _icon.Text = count > 0 ? $"{AppInfo.Title} - {L.T("{0} action(s) waiting", count)}" : AppInfo.Title;
+        old?.Dispose();
+    }
 
+    /// <summary>Notification Windows ; <paramref name="clicked"/> est appelé si on clique dessus.</summary>
+    public void Notify(string title, string text, Action? clicked = null)
+    {
+        _clicked = clicked;
+        _icon.Visible = true;
+        _icon.ShowBalloonTip(10000, title, text, Forms.ToolTipIcon.Info);
+    }
+
+    /// <summary>Menu reconstruit au changement de thème et de langue.</summary>
+    public void Rebuild()
+    {
+        var menu = new TrayMenu(ThemeManager.CurrentIsDark);
+        menu.AddItem(L.T("Open"), _image, _open, bold: true);
+        menu.AddItem(L.T("Check now"), "", _check);
+        menu.AddSeparator();
+        menu.AddItem(L.T("Quit"), "", _quit);
         var old = _icon.ContextMenuStrip;
         _icon.ContextMenuStrip = menu;
         old?.Dispose();
     }
 
+    /// <summary>Icône de l'application avec une pastille rouge portant le nombre (9+ au-delà).</summary>
+    private static Drawing.Icon Badge(Drawing.Icon image, int count)
+    {
+        var size = Forms.SystemInformation.SmallIconSize;
+        using var bitmap = new Drawing.Bitmap(size.Width, size.Height);
+        using (var graphics = Drawing.Graphics.FromImage(bitmap))
+        {
+            graphics.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            graphics.TextRenderingHint = Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            graphics.DrawIcon(image, new Drawing.Rectangle(0, 0, size.Width, size.Height));
+            var diameter = size.Width * 0.66f;
+            var circle = new Drawing.RectangleF(size.Width - diameter, size.Height - diameter, diameter, diameter);
+            using var red = new Drawing.SolidBrush(Drawing.Color.FromArgb(0xD1, 0x34, 0x38));
+            graphics.FillEllipse(red, circle);
+            using var font = new Drawing.Font("Segoe UI", diameter * (count > 9 ? 0.5f : 0.7f), Drawing.FontStyle.Bold, Drawing.GraphicsUnit.Pixel);
+            using var format = new Drawing.StringFormat { Alignment = Drawing.StringAlignment.Center, LineAlignment = Drawing.StringAlignment.Center };
+            graphics.DrawString(count > 9 ? "9+" : count.ToString(), font, Drawing.Brushes.White, circle, format);
+        }
+        var handle = bitmap.GetHicon();
+        try
+        {
+            using var temporary = Drawing.Icon.FromHandle(handle);
+            return (Drawing.Icon)temporary.Clone();
+        }
+        finally
+        {
+            DestroyIcon(handle);
+        }
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr handle);
+
     public void Dispose()
     {
-        Tr.LanguageChanged -= Rebuild;
         ThemeManager.ThemeChanged -= Rebuild;
-        _shell.Registry.ModuleFailed -= OnModuleFailed;
         _icon.Visible = false;
         _icon.ContextMenuStrip?.Dispose();
         _icon.Dispose();
         _image.Dispose();
+        _badge?.Dispose();
     }
 }
