@@ -130,7 +130,7 @@ public sealed class AppController
             Profile = load.Profile;
             ProfileOrigin = load.FromCache
                 ? L.T("Profile: local copy ({0})", load.Error ?? L.T("repository unreachable"))
-                : L.T("Profile: GitHub repository {0}", ProfileStore.Repository);
+                : L.T("Profile: GitHub repository {0}", Services.Profiles.Repository);
         }
         else
         {
@@ -189,6 +189,43 @@ public sealed class AppController
         {
             Dialogs.Error(L.T("The profile is not valid, nothing was imported:\n\n{0}", string.Join("\n", errors)));
             return;
+        }
+        if (Services.Account.IsSignedIn)
+            await ConnectProfileAsync(offerRepository: false);
+        else
+            await CheckAsync(manual: true);
+    }
+
+    /// <summary>
+    /// Après la connexion ou un import : guide la création du dépôt privé du profil sur le compte de l'utilisateur
+    /// et l'accès de l'application à ce seul dépôt, propose d'y envoyer la copie locale s'il est vide, puis vérifie.
+    /// </summary>
+    public async Task ConnectProfileAsync(bool offerRepository = true)
+    {
+        var repository = Services.Profiles.Repository;
+        try
+        {
+            switch (await Services.Profiles.CheckAccessAsync())
+            {
+                case ProfileAccess.NoRepository when offerRepository:
+                    if (Dialogs.Confirm(L.T("The private repository {0} does not exist on your GitHub account yet, or UtilitiesManager has no access to it.\n\nCreate it on GitHub (private), then allow access.", repository),
+                                        L.T("Create the repository"), L.T("It already exists")))
+                        Ui.OpenExternal(ProfileStore.CreationUrl);
+                    if (Dialogs.Confirm(L.T("Allow UtilitiesManager to access the repository {0} only (\"Only select repositories\"), then click \"Check now\".", repository),
+                                        L.T("Allow access"), L.T("Later")))
+                        Ui.OpenExternal(GitHubSignIn.InstallationUrl);
+                    return;
+                case ProfileAccess.NoProfileFile when Profile is { } local:
+                    if (Dialogs.Confirm(L.T("The repository {0} does not contain a profile yet. Send the local copy of the profile to it?", repository),
+                                        L.T("Send"), L.T("Later")))
+                        await Services.Profiles.SaveAsync(local, "Profil initial");
+                    break;
+            }
+        }
+        catch (Exception exc) when (exc is GitHubException or HttpRequestException or IOException)
+        {
+            Log.Error($"Dépôt du profil : {exc.Message}");
+            Dialogs.Error(L.T("The profile repository could not be reached:\n\n{0}", exc.Message));
         }
         await CheckAsync(manual: true);
     }

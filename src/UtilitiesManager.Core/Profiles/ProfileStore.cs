@@ -6,28 +6,48 @@ namespace UtilitiesManager.Profiles;
 /// <summary>Profil chargé : depuis GitHub ou la copie locale, avec l'erreur rencontrée éventuelle.</summary>
 public sealed record ProfileLoad(Profile? Profile, bool FromCache, string? Error);
 
-/// <summary>
-/// Profil rangé dans le dépôt privé <see cref="Repository"/> : lecture et écriture par l'API GitHub (chaque
-/// modification est un commit), copie locale du dernier profil valide pour travailler hors ligne, import manuel
-/// d'un fichier.
-/// </summary>
-public sealed class ProfileStore(AppPaths paths, Func<string, GitHubRepositoryClient> clientFor)
+/// <summary>État du dépôt du profil sur le compte connecté.</summary>
+public enum ProfileAccess
 {
-    public const string Repository = "jeanbrowaeyspro/UtilitiesProfile";
+    Ready,
+    /// <summary>Dépôt accessible, sans fichier de profil.</summary>
+    NoProfileFile,
+    /// <summary>Dépôt absent, ou application GitHub non installée sur ce dépôt.</summary>
+    NoRepository,
+}
+
+/// <summary>
+/// Profil rangé dans le dépôt privé <see cref="RepositoryName"/> du compte GitHub connecté : lecture et écriture
+/// par l'API GitHub (chaque modification est un commit), copie locale du dernier profil valide pour travailler hors
+/// ligne, import manuel d'un fichier.
+/// </summary>
+/// <param name="owner">Compte GitHub connecté, vide si aucun.</param>
+public sealed class ProfileStore(AppPaths paths, Func<string> owner, Func<string, GitHubRepositoryClient> clientFor)
+{
+    public const string RepositoryName = "UtilitiesProfile";
     public const string FileName = "profile.json";
     /// <summary>Préfixe d'une adresse qui désigne un fichier du dépôt du profil.</summary>
     public const string ProfileScheme = "profile:";
 
+    /// <summary>Page GitHub de création du dépôt, nom et visibilité privée déjà remplis.</summary>
+    public const string CreationUrl = $"https://github.com/new?name={RepositoryName}&visibility=private";
+
+    /// <summary>"compte/UtilitiesProfile", null si aucun compte n'est connecté.</summary>
+    public string? Repository => owner() is { Length: > 0 } login ? $"{login}/{RepositoryName}" : null;
+
+    private GitHubRepositoryClient Client() =>
+        clientFor(Repository ?? throw new GitHubException(GitHubFailure.NoToken, L.T("Profile not reachable on GitHub: sign in to GitHub or import a profile.")));
+
     /// <summary>
-    /// Lit le profil sur GitHub et met à jour la copie locale. Réseau absent, accès refusé ou profil invalide :
-    /// copie locale, et l'erreur est rendue pour être signalée.
+    /// Lit le profil sur GitHub et met à jour la copie locale. Aucun compte, réseau absent, accès refusé ou profil
+    /// invalide : copie locale, et l'erreur est rendue pour être signalée.
     /// </summary>
     public async Task<ProfileLoad> LoadAsync(CancellationToken cancellation = default)
     {
         string? error;
         try
         {
-            using var client = clientFor(Repository);
+            using var client = Client();
             var text = Encoding.UTF8.GetString(await client.GetFileAsync(FileName, cancellation).ConfigureAwait(false));
             var (profile, errors) = ProfileValidator.Read(text);
             if (profile is not null)
@@ -37,7 +57,7 @@ public sealed class ProfileStore(AppPaths paths, Func<string, GitHubRepositoryCl
             }
             error = L.T("The profile on GitHub is invalid, nothing is applied from it:") + Environment.NewLine + string.Join(Environment.NewLine, errors);
         }
-        catch (GitHubException exc) when (exc.Failure == GitHubFailure.NotFound)
+        catch (GitHubException exc) when (exc.Failure is GitHubFailure.NotFound or GitHubFailure.NoToken)
         {
             error = L.T("Profile not reachable on GitHub: sign in to GitHub or import a profile.");
         }
@@ -77,7 +97,7 @@ public sealed class ProfileStore(AppPaths paths, Func<string, GitHubRepositoryCl
         if (errors.Count > 0)
             throw new InvalidDataException(string.Join(Environment.NewLine, errors));
         var text = profile.ToJson();
-        using (var client = clientFor(Repository))
+        using (var client = Client())
             await client.PutFileAsync(FileName, Encoding.UTF8.GetBytes(text), message, cancellation).ConfigureAwait(false);
         AtomicFile.WriteAllText(paths.ProfileCache, text);
         Log.Info($"Profil enregistré sur GitHub : {message}");
@@ -86,8 +106,17 @@ public sealed class ProfileStore(AppPaths paths, Func<string, GitHubRepositoryCl
     /// <summary>Télécharge un fichier du dépôt du profil (<c>profile:chemin</c>) vers <paramref name="destination"/>.</summary>
     public async Task DownloadAsync(string url, string destination, CancellationToken cancellation = default)
     {
-        using var client = clientFor(Repository);
+        using var client = Client();
         var bytes = await client.GetFileAsync(url[ProfileScheme.Length..], cancellation).ConfigureAwait(false);
         await File.WriteAllBytesAsync(destination, bytes, cancellation).ConfigureAwait(false);
+    }
+
+    /// <summary>État du dépôt du profil sur le compte connecté (après la connexion ou un import).</summary>
+    public async Task<ProfileAccess> CheckAccessAsync(CancellationToken cancellation = default)
+    {
+        using var client = Client();
+        if (await client.GetFileShaAsync(FileName, cancellation).ConfigureAwait(false) is not null)
+            return ProfileAccess.Ready;
+        return await client.ExistsAsync(cancellation).ConfigureAwait(false) ? ProfileAccess.NoProfileFile : ProfileAccess.NoRepository;
     }
 }

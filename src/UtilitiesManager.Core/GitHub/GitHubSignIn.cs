@@ -48,6 +48,12 @@ public sealed class GitHubSignIn : GitHubHttpClient
     /// <summary>Client ID public de l'application GitHub de UtilitiesManager ; vide tant qu'elle n'est pas creee.</summary>
     public const string ApplicationClientId = "";
 
+    /// <summary>Nom public de l'application GitHub dans son adresse (github.com/apps/...) ; vide tant qu'elle n'est pas creee.</summary>
+    public const string ApplicationSlug = "";
+
+    /// <summary>Page GitHub qui installe l'application sur les depots choisis par l'utilisateur.</summary>
+    public static string InstallationUrl => $"https://github.com/apps/{ApplicationSlug}/installations/new";
+
     private const string TokenUrl = "https://github.com/login/oauth/access_token";
 
     private readonly string _clientId;

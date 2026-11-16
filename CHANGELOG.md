@@ -5,6 +5,9 @@
 ### Ajouté
 - Ligne de commande : vérifier, installer, mettre à jour, revenir à la version précédente, appliquer ou rétablir un réglage Windows, importer ou relire le profil, avec résultat en JSON et code de sortie.
 
+### Modifié
+- Le profil est rangé dans le dépôt privé `UtilitiesProfile` du compte GitHub de chaque utilisateur. À la première connexion, l'outil guide la création du dépôt et l'accès à ce seul dépôt, puis propose d'y envoyer la copie locale du profil.
+
 ### Corrigé
 - Icône nette dans la fenêtre "À propos" (elle était agrandie depuis sa plus petite image).
 

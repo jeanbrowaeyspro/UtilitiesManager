@@ -20,7 +20,7 @@ public sealed class AppServices
         Account = new GitHubAccount(new GitHubCredentialStore(paths.CredentialFile), new GitHubSignIn(UserAgent),
                                     (repository, token) => new GitHubRepositoryClient(repository, token, UserAgent));
         Func<string, GitHubRepositoryClient> github = Account.CreateClient;
-        Profiles = new ProfileStore(paths, github);
+        Profiles = new ProfileStore(paths, () => Account.Login, github);
         State = MachineState.Load(paths.StateFile);
         var shell = new ShellCommands(Runner);
         Winget = new Winget(Runner);

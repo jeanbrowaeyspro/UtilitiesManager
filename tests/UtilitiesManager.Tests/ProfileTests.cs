@@ -69,4 +69,30 @@ public class ProfileTests
         Assert.Contains(errors, e => e.StartsWith("regex : motif"));
         Assert.Contains(@"menu-classique : la clé de registre doit commencer par HKCU\ ou HKLM\.", errors);
     }
+
+    [Fact]
+    public async Task ProfileRepositoryBelongsToTheSignedInAccountAndLocalCopyServesWithoutIt()
+    {
+        var paths = Fixtures.NewPaths();
+        var login = "";
+        var store = new ProfileStore(paths, () => login, _ => throw new InvalidOperationException("aucune requête sans compte"));
+
+        Assert.Null(store.Repository);
+        Assert.Empty(store.Import(WriteJson(paths)));
+        var load = await store.LoadAsync();
+        Assert.True(load.FromCache);
+        Assert.NotNull(load.Profile);
+        Assert.NotNull(load.Error);
+
+        login = "utilisateur";
+        Assert.Equal("utilisateur/UtilitiesProfile", store.Repository);
+    }
+
+    private static string WriteJson(AppPaths paths)
+    {
+        var file = Path.Combine(paths.TempDir, "profile.json");
+        Directory.CreateDirectory(paths.TempDir);
+        File.WriteAllText(file, Json);
+        return file;
+    }
 }

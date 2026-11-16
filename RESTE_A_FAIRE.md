@@ -8,8 +8,11 @@
 
 ## À faire
 
-- Créer l'application GitHub (GitHub App) de Jean, accès en lecture et écriture au seul dépôt UtilitiesProfile,
-  et poser son Client ID dans `GitHubSignIn.ApplicationClientId`. Sans elle, pas de connexion GitHub : profil importé
+- Enregistrer l'application GitHub (GitHub App) de UtilitiesManager sous le compte de Jean, en éditeur du logiciel :
+  installable par tout compte ("Any account"), flux d'appareil activé, sans webhook, permission Contents en
+  lecture et écriture (Metadata en lecture, imposée). Chaque utilisateur l'installe sur son seul dépôt
+  `<compte>/UtilitiesProfile`. Poser son Client ID dans `GitHubSignIn.ApplicationClientId` et son nom d'adresse
+  (github.com/apps/...) dans `GitHubSignIn.ApplicationSlug`. Sans elle, pas de connexion GitHub : profil importé
   à la main, et les fichiers `profile:` (zip EdiTSAB, `office_config.xml`) comme la release privée de HAIC ne
   peuvent pas être téléchargés.
 - Signataires de Npcap et d'iVMS-4200 à relever sur un installeur téléchargé, puis `verify: signature` et `signer`

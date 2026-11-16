@@ -66,8 +66,13 @@ jamais masquée.
 
 ## Profil
 
-Le profil est un fichier JSON rangé dans un dépôt GitHub privé, avec une copie locale qui sert hors ligne. Ajouter,
-modifier ou retirer un logiciel se fait depuis l'outil ou dans le fichier, sans nouvelle version de l'outil.
+Le profil est un fichier JSON rangé dans le dépôt privé `UtilitiesProfile` du compte GitHub de chaque utilisateur,
+avec une copie locale qui sert hors ligne. Ajouter, modifier ou retirer un logiciel se fait depuis l'outil ou dans
+le fichier, sans nouvelle version de l'outil.
+
+À la première connexion (Paramètres > Se connecter), l'outil ouvre la page GitHub de création du dépôt, puis celle
+qui autorise UtilitiesManager à accéder à ce seul dépôt. Si le dépôt est vide, il propose d'y envoyer la copie
+locale du profil.
 
 ## Fichiers
 

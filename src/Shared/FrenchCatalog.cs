@@ -279,6 +279,19 @@ internal static class FrenchCatalog
         ["Installed: {0}\nLatest version: {1}"] = "Installée : {0}\nDernière version : {1}",
         ["Test failed, nothing was saved: {0}"] = "Échec du test, rien n'a été enregistré : {0}",
 
+        // Dépôt du profil sur le compte de l'utilisateur
+        ["The private repository {0} does not exist on your GitHub account yet, or UtilitiesManager has no access to it.\n\nCreate it on GitHub (private), then allow access."] =
+            "Le dépôt privé {0} n'existe pas encore sur le compte GitHub, ou UtilitiesManager n'y a pas accès.\n\nLe créer sur GitHub (privé), puis autoriser l'accès.",
+        ["Create the repository"] = "Créer le dépôt",
+        ["It already exists"] = "Il existe déjà",
+        ["Allow UtilitiesManager to access the repository {0} only (\"Only select repositories\"), then click \"Check now\"."] =
+            "Autoriser UtilitiesManager à accéder au seul dépôt {0} (\"Only select repositories\"), puis cliquer sur \"Vérifier maintenant\".",
+        ["Allow access"] = "Autoriser l'accès",
+        ["The repository {0} does not contain a profile yet. Send the local copy of the profile to it?"] =
+            "Le dépôt {0} ne contient pas encore de profil. Y envoyer la copie locale du profil ?",
+        ["Send"] = "Envoyer",
+        ["The profile repository could not be reached:\n\n{0}"] = "Le dépôt du profil est injoignable :\n\n{0}",
+
         // Ligne de commande
         ["Another UtilitiesManager operation is in progress."] = "Une autre opération de UtilitiesManager est en cours.",
         ["Failed: {0}"] = "Échec : {0}",

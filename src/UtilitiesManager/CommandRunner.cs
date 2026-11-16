@@ -185,7 +185,7 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
         if (_json)
             WriteJson(new JsonObject { ["synced"] = synced, ["error"] = load.Error });
         else
-            output.WriteLine(synced ? L.T("Profile: GitHub repository {0}", ProfileStore.Repository) : load.Error);
+            output.WriteLine(synced ? L.T("Profile: GitHub repository {0}", services.Profiles.Repository) : load.Error);
         return synced ? CliCommand.ExitOk : CliCommand.ExitFailed;
     }
 

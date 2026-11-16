@@ -127,6 +127,20 @@ public sealed class GitHubRepositoryClient : GitHubHttpClient
         return user.TryGetProperty("login", out var login) ? login.GetString() ?? string.Empty : string.Empty;
     }
 
+    /// <summary>Vrai si le depot existe et que le jeton y a acces (sinon GitHub repond 404 dans les deux cas).</summary>
+    public async Task<bool> ExistsAsync(CancellationToken cancellation = default)
+    {
+        try
+        {
+            await SendJsonAsync<JsonElement>(HttpMethod.Get, RepositoryUrl, cancellation).ConfigureAwait(false);
+            return true;
+        }
+        catch (GitHubException ex) when (ex.Failure == GitHubFailure.NotFound)
+        {
+            return false;
+        }
+    }
+
     private string ContentsUrl(string path) =>
         $"{RepositoryUrl}/contents/{string.Join('/', path.Split('/').Select(Uri.EscapeDataString))}";
 

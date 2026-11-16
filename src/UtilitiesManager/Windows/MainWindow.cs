@@ -373,7 +373,7 @@ public sealed class MainWindow : ThemedWindow
             return;
         }
         if (new SignInWindow(_controller.Services.Account) { Owner = this }.ShowDialog() == true)
-            _ = _controller.CheckAsync(manual: true);
+            _ = _controller.ConnectProfileAsync();
     }
 
     private async Task ImportAsync()
