@@ -250,6 +250,8 @@ public sealed class InstallService(Winget winget, Detector detector, LatestResol
         if (Winget.CancelledCodes.Contains(output.ExitCode))
             return new InstallOutcome(InstallResult.Cancelled, L.T("Cancelled."));
         Log.Error($"winget {Winget.ExitCodeText(output.ExitCode)} : {output.Text}");
+        if (Winget.DownloadNotFoundCodes.Contains(output.ExitCode))
+            return new InstallOutcome(InstallResult.Failed, L.T("{0}: installer not found at the publisher, winget package not updated yet (code {1}).", program.Name, Winget.ExitCodeText(output.ExitCode)));
         return new InstallOutcome(InstallResult.Failed, L.T("{0}: winget failed (code {1}).", program.Name, Winget.ExitCodeText(output.ExitCode)));
     }
 

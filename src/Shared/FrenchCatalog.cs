@@ -133,6 +133,7 @@ internal static class FrenchCatalog
         ["Back to version {0}…"] = "Retour à la version {0}…",
         ["{0}: no release found."] = "{0} : aucune release trouvée.",
         ["{0}: winget failed (code {1})."] = "{0} : échec de winget (code {1}).",
+        ["{0}: installer not found at the publisher, winget package not updated yet (code {1})."] = "{0} : installeur introuvable chez l'éditeur, paquet winget pas encore mis à jour (code {1}).",
         ["{0}: no install command."] = "{0} : aucune commande d'installation.",
         ["{0}: installer ended with code {1}."] = "{0} : l'installeur s'est terminé avec le code {1}.",
         ["{0}: no previous version kept."] = "{0} : aucune version précédente conservée.",

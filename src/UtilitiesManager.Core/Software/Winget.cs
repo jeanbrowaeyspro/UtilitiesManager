@@ -20,6 +20,9 @@ public sealed class Winget(IProcessRunner runner)
     /// <summary>Codes de sortie d'une installation annulée (UAC refusée, installeur fermé).</summary>
     public static readonly int[] CancelledCodes = [unchecked((int)0x8A15010C), 1223, unchecked((int)0x800704C7)];
 
+    /// <summary>Téléchargement de l'installeur refusé par le serveur de l'éditeur : HTTP 404 (introuvable) ou 403.</summary>
+    public static readonly int[] DownloadNotFoundCodes = [unchecked((int)0x80190194), unchecked((int)0x80190193)];
+
     private string? _path;
 
     /// <summary>
