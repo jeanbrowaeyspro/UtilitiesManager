@@ -1,5 +1,11 @@
 # Nouveautés
 
+## [0.0.11] - 2026-11-17
+
+### Corrigé
+- Réglage de la barre des tâches : les widgets sont masqués par la stratégie Windows (l'ancien réglage est protégé par Windows et refusé). Ce réglage demande les droits administrateur, et un réglage déjà en place n'est plus réécrit.
+- Chocolatey : le dossier d'extraction de l'installeur est créé avant l'installation (FileZilla échouait sur un chemin introuvable).
+
 ## [0.0.10] - 2026-11-17
 
 ### Corrigé
