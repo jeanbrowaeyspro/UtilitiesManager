@@ -8,11 +8,13 @@ public sealed class GitHubAccount
 {
     private readonly GitHubCredentialStore _store;
     private readonly GitHubSignIn _signIn;
-    private readonly Func<string, string, GitHubRepositoryClient> _clientFor;
+    private readonly Func<string, Func<CancellationToken, ValueTask<string>>, GitHubRepositoryClient> _clientFor;
+    private readonly SemaphoreSlim _refresh = new(1);
     private GitHubCredential? _credential;
 
-    /// <param name="clientFor">Client d'un dépôt (dépôt, jeton).</param>
-    public GitHubAccount(GitHubCredentialStore store, GitHubSignIn signIn, Func<string, string, GitHubRepositoryClient> clientFor)
+    /// <param name="clientFor">Client d'un dépôt (dépôt, lecture du jeton).</param>
+    public GitHubAccount(GitHubCredentialStore store, GitHubSignIn signIn,
+                         Func<string, Func<CancellationToken, ValueTask<string>>, GitHubRepositoryClient> clientFor)
     {
         _store = store;
         _signIn = signIn;
@@ -35,7 +37,7 @@ public sealed class GitHubAccount
     public async Task SignInAsync(DeviceCode code, CancellationToken cancellation = default)
     {
         var credential = await _signIn.WaitForTokenAsync(code, cancellation).ConfigureAwait(false);
-        using (var client = _clientFor(string.Empty, credential.AccessToken))
+        using (var client = _clientFor(string.Empty, _ => ValueTask.FromResult(credential.AccessToken)))
         {
             credential = credential with { Login = await client.GetUserLoginAsync(cancellation).ConfigureAwait(false) };
         }
@@ -54,28 +56,44 @@ public sealed class GitHubAccount
         Changed?.Invoke();
     }
 
-    /// <summary>Client d'un dépôt avec le jeton du compte (requêtes anonymes si déconnecté).</summary>
-    public GitHubRepositoryClient CreateClient(string repository) => _clientFor(repository, _credential?.AccessToken ?? string.Empty);
+    /// <summary>
+    /// Client d'un dépôt avec le jeton du compte, renouvelé avant chaque requête s'il a expiré (requêtes anonymes si
+    /// déconnecté).
+    /// </summary>
+    public GitHubRepositoryClient CreateClient(string repository) => _clientFor(repository, TokenAsync);
+
+    private async ValueTask<string> TokenAsync(CancellationToken cancellation)
+    {
+        await EnsureFreshAsync(cancellation).ConfigureAwait(false);
+        return _credential?.AccessToken ?? string.Empty;
+    }
 
     /// <summary>
-    /// Renouvelle le jeton s'il a expiré, avant une série de requêtes. Renouvellement refusé : déconnexion,
-    /// l'utilisateur doit se reconnecter.
+    /// Renouvelle le jeton s'il a expiré. Un seul renouvellement à la fois : le jeton de renouvellement ne sert
+    /// qu'une fois. Renouvellement refusé : déconnexion, l'utilisateur doit se reconnecter.
     /// </summary>
     public async Task EnsureFreshAsync(CancellationToken cancellation = default)
     {
-        if (_credential is { } credential && credential.IsExpired(DateTimeOffset.Now))
+        if (_credential?.IsExpired(DateTimeOffset.Now) != true)
+            return;
+        await _refresh.WaitAsync(cancellation).ConfigureAwait(false);
+        try
         {
-            try
+            if (_credential is { } credential && credential.IsExpired(DateTimeOffset.Now))
             {
                 _credential = await _signIn.RefreshAsync(credential, cancellation).ConfigureAwait(false);
                 _store.Save(_credential);
                 Log.Info("Connexion GitHub renouvelée");
             }
-            catch (SignInException ex)
-            {
-                Log.Error(ex.Message);
-                SignOut();
-            }
+        }
+        catch (SignInException ex)
+        {
+            Log.Error(ex.Message);
+            SignOut();
+        }
+        finally
+        {
+            _refresh.Release();
         }
     }
 }

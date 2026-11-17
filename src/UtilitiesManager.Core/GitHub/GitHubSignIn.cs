@@ -62,7 +62,7 @@ public sealed class GitHubSignIn : GitHubHttpClient
     /// <param name="delay">Attente entre deux interrogations, remplacee dans les tests.</param>
     public GitHubSignIn(string userAgent, string clientId = ApplicationClientId, HttpMessageHandler? handler = null,
         Func<TimeSpan, CancellationToken, Task>? delay = null)
-        : base(string.Empty, userAgent, handler, null)
+        : base(_ => ValueTask.FromResult(string.Empty), userAgent, handler, null)
     {
         _clientId = clientId;
         _delay = delay ?? Task.Delay;

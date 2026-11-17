@@ -66,6 +66,13 @@ public sealed class GitHubRepositoryClient : GitHubHttpClient
     /// <param name="repository">"proprietaire/depot".</param>
     /// <param name="handler">Remplace la pile reseau dans les tests.</param>
     public GitHubRepositoryClient(string repository, string token, string userAgent, HttpMessageHandler? handler = null, TimeSpan? timeout = null)
+        : this(repository, _ => ValueTask.FromResult(token), userAgent, handler, timeout)
+    {
+    }
+
+    /// <param name="token">Jeton lu avant chaque requête (celui du compte, renouvelé s'il a expiré).</param>
+    public GitHubRepositoryClient(string repository, Func<CancellationToken, ValueTask<string>> token, string userAgent,
+                                  HttpMessageHandler? handler = null, TimeSpan? timeout = null)
         : base(token, userAgent, handler, timeout)
     {
         _repository = repository;

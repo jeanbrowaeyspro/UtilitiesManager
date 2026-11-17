@@ -15,10 +15,12 @@ public abstract class GitHubHttpClient : IDisposable
     protected static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly HttpClient _http;
-    private readonly string _token;
+    private readonly Func<CancellationToken, ValueTask<string>> _token;
 
+    /// <param name="token">Jeton lu avant chaque requête authentifiée (renouvelé s'il a expiré) ; vide : anonyme.</param>
     /// <param name="handler">Remplace la pile reseau dans les tests.</param>
-    protected GitHubHttpClient(string token, string userAgent, HttpMessageHandler? handler, TimeSpan? timeout)
+    protected GitHubHttpClient(Func<CancellationToken, ValueTask<string>> token, string userAgent, HttpMessageHandler? handler,
+                               TimeSpan? timeout)
     {
         _token = token;
         _http = handler is null
@@ -30,8 +32,6 @@ public abstract class GitHubHttpClient : IDisposable
     }
 
     public TimeSpan RequestTimeout { get; }
-
-    public bool HasToken => _token.Length > 0;
 
     public void Dispose()
     {
@@ -77,9 +77,9 @@ public abstract class GitHubHttpClient : IDisposable
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
         if (authenticated)
         {
-            if (HasToken)
+            if (await _token(cancellation).ConfigureAwait(false) is { Length: > 0 } token)
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
             request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
