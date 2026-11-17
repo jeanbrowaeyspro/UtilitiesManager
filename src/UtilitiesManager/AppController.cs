@@ -99,8 +99,8 @@ public sealed class AppController
         {
             Services.Setup.Install(launcher, Settings);
         }
-        _tray = new TrayIcon(ShowMainWindow, () => _ = CheckAsync(manual: true), Quit, Settings.TrayIcon,
-                             () => Batch, PauseOrResume, StopBatch);
+        _tray = new TrayIcon(ShowMainWindow, () => _ = CheckFromTrayAsync(), Quit, Settings.TrayIcon,
+                             () => Batch, () => Busy, PauseOrResume, StopBatch);
         if (!args.Startup)
             ShowMainWindow();
         ShowNewsAfterUpdate(args.Startup);
@@ -266,54 +266,103 @@ public sealed class AppController
 
     // ---- Vérification et installations -----------------------------------------------------------------------
 
+    /// <summary>Bilan d'une vérification : actions en attente, mises à jour automatiques faites ou en échec, erreur.</summary>
+    public sealed record CheckSummary(int Pending, IReadOnlyList<string> Updated, IReadOnlyList<string> Failed, string? Error);
+
     /// <summary>
     /// Recharge le profil, vérifie tous les logiciels, installe les mises à jour en mode auto (notification à la
-    /// fin) et ouvre la fenêtre si une action attend une confirmation.
+    /// fin, sauf depuis l'icône qui fait son propre bilan) et ouvre la fenêtre si une action attend une
+    /// confirmation. Null si une autre opération est en cours.
     /// </summary>
-    public async Task CheckAsync(bool manual)
+    public async Task<CheckSummary?> CheckAsync(bool manual, bool fromTray = false)
     {
         if (!Begin())
-            return;
+            return null;
+        _tray?.SetActivity(L.T("Checking the software…"));
+        List<string> updated = [], failed = [];
+        string? error = null;
         try
         {
             Report(L.T("Checking the software…"), null);
             await LoadProfileAsync();
-            if (Profile is not { } profile)
+            if (Profile is { } profile)
+            {
+                Last = await _actions.CheckAsync(profile);
+                if (Last.WingetError is { } winget)
+                    Report(L.T("winget: {0}", winget), null);
+                StateChanged?.Invoke();
+
+                var auto = Last.AutoUpdates(profile.Defaults).Select(s => s.Program).ToList();
+                if (auto.Count > 0)
+                {
+                    var (done, notDone) = await RunBatchAsync(auto, Last, profile);
+                    updated = done.Select(p => p.Name).ToList();
+                    failed = notDone.Select(f => f.Program.Name).ToList();
+                    if (!fromTray)
+                        _tray?.Notify(AppPaths.AppName, UpdatedText(updated, failed), ShowMainWindow);
+                    Last = await _actions.CheckAsync(profile);
+                }
+                Report(L.T("Check finished."), null);
+            }
+            else
             {
                 Last = null;
-                return;
+                error = ProfileOrigin;
             }
-            Last = await _actions.CheckAsync(profile);
-            if (Last.WingetError is { } error)
-                Report(L.T("winget: {0}", error), null);
-            StateChanged?.Invoke();
-
-            var auto = Last.AutoUpdates(profile.Defaults).Select(s => s.Program).ToList();
-            if (auto.Count > 0)
-            {
-                var (done, failed) = await RunBatchAsync(auto, Last, profile);
-                var doneNames = string.Join(", ", done.Select(p => p.Name));
-                _tray?.Notify(AppPaths.AppName, failed.Count == 0
-                    ? L.T("Updated: {0}", doneNames)
-                    : L.T("Updated: {0}\nFailed: {1}", done.Count > 0 ? doneNames : L.T("none"), string.Join(", ", failed.Select(f => f.Program.Name))),
-                    ShowMainWindow);
-                Last = await _actions.CheckAsync(profile);
-            }
-            Report(L.T("Check finished."), null);
         }
         catch (Exception exc) when (exc is not OutOfMemoryException)
         {
             Log.Error($"Vérification : {exc}");
             Report(L.T("Check failed: {0}", exc.Message), null);
+            error = exc.Message;
         }
         finally
         {
             End();
+            _tray?.SetActivity(null);
         }
         _tray?.SetPending(PendingCount);
         if (!manual && PendingCount > 0)
             ShowMainWindow();
         AskRemovedPrograms();
+        return new CheckSummary(PendingCount, updated, failed, error);
+    }
+
+    /// <summary>Logiciels mis à jour automatiquement, et ceux en échec s'il y en a.</summary>
+    private static string UpdatedText(IReadOnlyList<string> updated, IReadOnlyList<string> failed) =>
+        failed.Count == 0
+            ? L.T("Updated: {0}", string.Join(", ", updated))
+            : L.T("Updated: {0}\nFailed: {1}", updated.Count > 0 ? string.Join(", ", updated) : L.T("none"), string.Join(", ", failed));
+
+    /// <summary>
+    /// "Vérifier maintenant" du menu de l'icône : logiciels puis nouvelle version de UtilitiesManager, notification
+    /// au début et bilan à la fin (clic : fenêtre de mise à jour de l'outil s'il y en a une, sinon fenêtre principale).
+    /// </summary>
+    private async Task CheckFromTrayAsync()
+    {
+        if (!Busy)
+            _tray?.Notify(AppPaths.AppName, L.T("Check started…"));
+        if (Busy || await CheckAsync(manual: true, fromTray: true) is not { } summary)
+        {
+            _tray?.Notify(AppPaths.AppName, L.T("A check or an installation is already in progress."), ShowMainWindow);
+            return;
+        }
+        var (update, updateError) = await FindSelfUpdateAsync(manual: true);
+
+        var lines = new List<string>();
+        if (summary.Error is { } error)
+            lines.Add(L.T("Check failed: {0}", error));
+        if (summary.Updated.Count > 0 || summary.Failed.Count > 0)
+            lines.Add(UpdatedText(summary.Updated, summary.Failed));
+        if (summary.Pending > 0)
+            lines.Add(L.T("{0} software to update, install or uninstall.", summary.Pending));
+        if (update is not null)
+            lines.Add(L.T("UtilitiesManager {0} is available", update.Version));
+        if (updateError is not null)
+            lines.Add(L.T("UtilitiesManager update check failed: {0}", updateError));
+        var attention = summary.Error is not null || summary.Failed.Count > 0 || summary.Pending > 0 || update is not null || updateError is not null;
+        lines.Add(attention ? L.T("Click to show.") : L.T("Everything is up to date (UtilitiesManager {0} included).", AppInfo.Version));
+        _tray?.Notify(L.T("Check finished"), string.Join("\n", lines), update is not null ? () => ShowUpdate(update) : ShowMainWindow);
     }
 
     /// <summary>
@@ -586,22 +635,13 @@ public sealed class AppController
     /// </summary>
     public async Task CheckSelfUpdateAsync(bool manual)
     {
-        var now = DateTimeOffset.Now;
-        if (!manual && !UpdateService.IsCheckDue(Settings.LastUpdateCheck, now))
+        if (!manual && !UpdateService.IsCheckDue(Settings.LastUpdateCheck, DateTimeOffset.Now))
             return;
-        AvailableUpdate? update;
-        try
+        var (update, error) = await FindSelfUpdateAsync(manual);
+        if (error is not null)
         {
-            update = await Services.CreateUpdateService().CheckAsync(SemVersion.Parse(AppInfo.Version), Settings.IncludePrereleases,
-                                                                      Settings.SkippedVersion, manual);
-            Settings.LastUpdateCheck = now;
-            Services.SaveSettings();
-        }
-        catch (Exception exc) when (exc is GitHubException or HttpRequestException or TaskCanceledException)
-        {
-            Log.Error($"Recherche de mise à jour : {exc.Message}");
             if (manual)
-                Dialogs.Error(L.T("The update check failed:\n\n{0}", exc.Message));
+                Dialogs.Error(L.T("The update check failed:\n\n{0}", error));
             return;
         }
         if (update is null)
@@ -613,6 +653,27 @@ public sealed class AppController
         if (!manual)
             _tray?.Notify(AppPaths.AppName, L.T("UtilitiesManager {0} is available", update.Version), () => ShowUpdate(update));
         ShowUpdate(update);
+    }
+
+    /// <summary>
+    /// Nouvelle version publiée (null si à jour ; une version ignorée n'est rendue qu'à la demande) ou message
+    /// d'erreur de la recherche.
+    /// </summary>
+    private async Task<(AvailableUpdate? Update, string? Error)> FindSelfUpdateAsync(bool manual)
+    {
+        try
+        {
+            var update = await Services.CreateUpdateService().CheckAsync(SemVersion.Parse(AppInfo.Version), Settings.IncludePrereleases,
+                                                                          Settings.SkippedVersion, manual);
+            Settings.LastUpdateCheck = DateTimeOffset.Now;
+            Services.SaveSettings();
+            return (update, null);
+        }
+        catch (Exception exc) when (exc is GitHubException or HttpRequestException or TaskCanceledException)
+        {
+            Log.Error($"Recherche de mise à jour : {exc.Message}");
+            return (null, exc.Message);
+        }
     }
 
     private void ShowUpdate(AvailableUpdate update)

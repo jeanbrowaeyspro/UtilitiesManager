@@ -22,8 +22,8 @@ internal sealed class TrayMenu : Forms.ContextMenuStrip
     public TrayMenu(bool dark)
     {
         _palette = dark
-            ? new Palette(Rgb(0x2C2C2C), Rgb(0x3D3D3D), Rgb(0x404040), Rgb(0xFFFFFF))
-            : new Palette(Rgb(0xF9F9F9), Rgb(0xE9E9E9), Rgb(0xDEDEDE), Rgb(0x1B1B1B));
+            ? new Palette(Rgb(0x2C2C2C), Rgb(0x3D3D3D), Rgb(0x404040), Rgb(0xFFFFFF), Rgb(0x8A8A8A))
+            : new Palette(Rgb(0xF9F9F9), Rgb(0xE9E9E9), Rgb(0xDEDEDE), Rgb(0x1B1B1B), Rgb(0xA0A0A0));
         _glyphFont = new Drawing.Font(FluentIcons, 11f);
         if (_glyphFont.Name != FluentIcons)
         {
@@ -94,7 +94,7 @@ internal sealed class TrayMenu : Forms.ContextMenuStrip
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 
-    private sealed record Palette(Drawing.Color Back, Drawing.Color Hover, Drawing.Color Line, Drawing.Color Text);
+    private sealed record Palette(Drawing.Color Back, Drawing.Color Hover, Drawing.Color Line, Drawing.Color Text, Drawing.Color Disabled);
 
     /// <summary>Dessin complet du menu : rien ne vient des couleurs du systeme.</summary>
     private sealed class MenuRenderer(TrayMenu menu) : Forms.ToolStripRenderer
@@ -129,6 +129,7 @@ internal sealed class TrayMenu : Forms.ContextMenuStrip
             var inset = menu.Scaled(4);
             var margin = new Drawing.Rectangle(inset, 0, e.TextRectangle.Left - inset, e.Item.Height);
             var text = new Drawing.Rectangle(e.TextRectangle.Left, 0, e.Item.Width - e.TextRectangle.Left, e.Item.Height);
+            var color = e.Item.Enabled ? menu._palette.Text : menu._palette.Disabled;
             switch (e.Item.Tag)
             {
                 case string glyph:
@@ -137,7 +138,7 @@ internal sealed class TrayMenu : Forms.ContextMenuStrip
                         glyph,
                         menu._glyphFont,
                         margin,
-                        menu._palette.Text,
+                        color,
                         Forms.TextFormatFlags.HorizontalCenter | Forms.TextFormatFlags.VerticalCenter | Forms.TextFormatFlags.NoPadding | Forms.TextFormatFlags.NoPrefix);
                     break;
                 case Drawing.Icon icon:
@@ -151,7 +152,7 @@ internal sealed class TrayMenu : Forms.ContextMenuStrip
                 e.Text,
                 e.TextFont,
                 text,
-                menu._palette.Text,
+                color,
                 Forms.TextFormatFlags.Left | Forms.TextFormatFlags.VerticalCenter | Forms.TextFormatFlags.SingleLine | Forms.TextFormatFlags.HidePrefix);
         }
 

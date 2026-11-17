@@ -8,8 +8,8 @@ namespace UtilitiesManager;
 
 /// <summary>
 /// Icône de la zone de notifications : nombre d'actions en attente dessiné sur l'icône, clic gauche ouvre la
-/// fenêtre, menu Ouvrir / Vérifier maintenant / Quitter (avec Pause et Arrêter pendant une série d'installations),
-/// notifications. Masquable dans Paramètres : elle n'apparaît
+/// fenêtre, menu Ouvrir / Vérifier maintenant (grisé pendant une opération) / Quitter (avec Pause et Arrêter
+/// pendant une série d'installations), opération en cours dans l'infobulle, notifications. Masquable dans Paramètres : elle n'apparaît
 /// alors que le temps d'une notification.
 /// </summary>
 public sealed class TrayIcon : IDisposable
@@ -18,6 +18,7 @@ public sealed class TrayIcon : IDisposable
     private readonly Action _check;
     private readonly Action _quit;
     private readonly Func<BatchControl?> _batch;
+    private readonly Func<bool> _busy;
     private readonly Action _pause;
     private readonly Action _stop;
     private readonly Forms.NotifyIcon _icon;
@@ -25,13 +26,16 @@ public sealed class TrayIcon : IDisposable
     private Drawing.Icon? _badge;
     private Action? _clicked;
     private bool _wanted;
+    private int _pending;
+    private string? _activity;
 
-    public TrayIcon(Action open, Action check, Action quit, bool visible, Func<BatchControl?> batch, Action pause, Action stop)
+    public TrayIcon(Action open, Action check, Action quit, bool visible, Func<BatchControl?> batch, Func<bool> busy, Action pause, Action stop)
     {
         _open = open;
         _check = check;
         _quit = quit;
         _batch = batch;
+        _busy = busy;
         _pause = pause;
         _stop = stop;
         using (var stream = Application.GetResourceStream(new Uri(Ui.IconUri)).Stream)
@@ -71,9 +75,22 @@ public sealed class TrayIcon : IDisposable
         var old = _badge;
         _badge = count > 0 ? Badge(_image, count) : null;
         _icon.Icon = _badge ?? _image;
-        _icon.Text = count > 0 ? $"{AppInfo.Title} - {L.T("{0} action(s) waiting", count)}" : AppInfo.Title;
+        _pending = count;
+        UpdateText();
         old?.Dispose();
     }
+
+    /// <summary>Opération en cours affichée dans l'infobulle à la place du nombre d'actions (null : fin).</summary>
+    public void SetActivity(string? activity)
+    {
+        _activity = activity;
+        UpdateText();
+    }
+
+    private void UpdateText() =>
+        _icon.Text = _activity is not null ? $"{AppInfo.Title} - {_activity}"
+                   : _pending > 0 ? $"{AppInfo.Title} - {L.T("{0} action(s) waiting", _pending)}"
+                   : AppInfo.Title;
 
     /// <summary>Notification Windows ; <paramref name="clicked"/> est appelé si on clique dessus.</summary>
     public void Notify(string title, string text, Action? clicked = null)
@@ -88,11 +105,12 @@ public sealed class TrayIcon : IDisposable
     {
         var menu = new TrayMenu(ThemeManager.CurrentIsDark);
         menu.AddItem(L.T("Open"), _image, _open, bold: true);
-        menu.AddItem(L.T("Check now"), "", _check);
+        var check = menu.AddItem(L.T("Check now"), "", _check);
         var pause = menu.AddItem(L.T("Pause"), "", _pause);
         var stop = menu.AddItem(L.T("Stop the installations"), "", _stop);
         menu.Opening += (_, _) =>
         {
+            check.Enabled = !_busy();
             var batch = _batch();
             pause.Visible = stop.Visible = batch is { Stopped: false };
             pause.Text = batch is { Paused: true } ? L.T("Resume") : L.T("Pause");
