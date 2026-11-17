@@ -2,6 +2,11 @@
 
 ## [0.0.9] - 2026-11-17
 
+### Ajouté
+- "Vérifier maintenant" du menu de l'icône : notification "Vérification lancée…", puis un bilan à la fin (logiciels à mettre à jour, installer ou désinstaller, mises à jour automatiques faites, nouvelle version de UtilitiesManager, erreurs, ou "Tout est à jour"). Un clic sur le bilan ouvre la fenêtre de mise à jour de UtilitiesManager s'il y en a une, sinon la fenêtre principale.
+- Ce même bouton cherche aussi une nouvelle version de UtilitiesManager.
+- "Vérifier maintenant" est grisé pendant une vérification ou une installation, et l'infobulle de l'icône indique "Vérification des logiciels…" pendant la vérification.
+
 ### Corrigé
 - Avec plusieurs écrans à des mises à l'échelle différentes, la fenêtre se rouvre sur son écran, même agrandie (elle pouvait se rouvrir sur l'écran principal).
 
