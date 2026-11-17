@@ -1,5 +1,10 @@
 # Nouveautés
 
+## [0.0.9] - 2026-11-17
+
+### Corrigé
+- Avec plusieurs écrans à des mises à l'échelle différentes, la fenêtre se rouvre sur son écran, même agrandie (elle pouvait se rouvrir sur l'écran principal).
+
 ## [0.0.8] - 2026-11-17
 
 ### Ajouté

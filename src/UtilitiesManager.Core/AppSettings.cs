@@ -69,5 +69,5 @@ public sealed class AppSettings
     public void Save(string path) => AtomicFile.WriteAllText(path, ToJson());
 }
 
-/// <summary>Position et taille d'une fenêtre (unités WPF), état agrandi.</summary>
+/// <summary>Position et taille normales d'une fenêtre (pixels, comme les donne Windows), état agrandi.</summary>
 public sealed record WindowPlacement(double Left, double Top, double Width, double Height, bool Maximized);

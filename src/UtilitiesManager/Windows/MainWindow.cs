@@ -50,7 +50,7 @@ public sealed class MainWindow : ThemedWindow
         MinWidth = 700;
         MinHeight = 450;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        RestorePlacement(controller.Settings.MainWindow);
+        WindowPosition.Restore(this, controller.Settings.MainWindow);
 
         var tabs = new TabControl { Margin = new Thickness(12, 4, 12, 0) };
         tabs.Items.Add(new TabItem { Header = L.T("Software"), Content = BuildProgramsTab() });
@@ -417,33 +417,10 @@ public sealed class MainWindow : ThemedWindow
         return heading;
     }
 
-    // ---- Position de la fenêtre ------------------------------------------------------------------------------
-
-    /// <summary>Reprend la dernière position (écran compris) si elle est encore visible sur un écran branché.</summary>
-    private void RestorePlacement(WindowPlacement? placement)
-    {
-        const double Margin = 50;
-        if (placement is null
-            || placement.Left + placement.Width < SystemParameters.VirtualScreenLeft + Margin
-            || placement.Left > SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Margin
-            || placement.Top < SystemParameters.VirtualScreenTop
-            || placement.Top > SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Margin)
-            return;
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        Left = placement.Left;
-        Top = placement.Top;
-        Width = Math.Max(placement.Width, MinWidth);
-        Height = Math.Max(placement.Height, MinHeight);
-        if (placement.Maximized)
-            SourceInitialized += (_, _) => WindowState = WindowState.Maximized;
-    }
-
     private void SavePlacement()
     {
-        var bounds = RestoreBounds;
-        if (!bounds.IsEmpty)
-            Save(() => _controller.Settings.MainWindow =
-                new WindowPlacement(bounds.Left, bounds.Top, bounds.Width, bounds.Height, WindowState == WindowState.Maximized));
+        if (WindowPosition.Read(this) is { } placement)
+            Save(() => _controller.Settings.MainWindow = placement);
     }
 
     private void Save(Action change)
