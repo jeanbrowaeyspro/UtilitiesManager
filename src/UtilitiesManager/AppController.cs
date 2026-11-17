@@ -504,6 +504,29 @@ public sealed class AppController
             await EditProfileAsync(p => p.Tweaks.AddRange(found), "Réglages Windows relevés sur ce PC");
     }
 
+    // ---- Relevé des logiciels de ce PC -----------------------------------------------------------------------
+
+    public Task<IReadOnlyList<FoundSoftware>> ScanAsync(Profile profile) => _actions.ScanAsync(profile);
+
+    /// <summary>
+    /// Sources possibles d'un logiciel relevé (winget, Chocolatey, GitHub, page à compléter), barre d'avancement
+    /// animée pendant la recherche ; null si une autre opération est en cours.
+    /// </summary>
+    public async Task<IReadOnlyList<SourceCandidate>?> FindSourcesAsync(FoundSoftware found, Profile profile)
+    {
+        if (!Begin())
+            return null;
+        try
+        {
+            Report(L.T("Searching for a source for {0}…", found.Name), null);
+            return await Services.SourceFinder.FindAsync(found, profile);
+        }
+        finally
+        {
+            End();
+        }
+    }
+
     /// <summary>Applique ou rétablit les réglages choisis ; redémarre l'Explorateur si l'un d'eux le demande.</summary>
     public void ChangeTweaks(IReadOnlyList<TweakEntry> tweaks, bool apply)
     {

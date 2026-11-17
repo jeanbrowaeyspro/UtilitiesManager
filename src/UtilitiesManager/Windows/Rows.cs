@@ -81,6 +81,35 @@ public sealed class TweakRow(TweakEntry tweak, bool applied) : ObservableObject
     public string Text => $"{Tweak.Name} ({(Applied ? L.T("applied") : L.T("not applied"))})";
 }
 
+/// <summary>Ligne du relevé des logiciels de ce PC (fenêtre et commande <c>scan</c>).</summary>
+public sealed class FoundRow(FoundSoftware found, bool ignored = false) : ObservableObject
+{
+    private bool _selected;
+
+    public FoundSoftware Found { get; } = found;
+    public bool Ignored { get; } = ignored;
+
+    public bool Selected
+    {
+        get => _selected;
+        set => Set(ref _selected, value);
+    }
+
+    public string Name => Ignored ? L.T("{0} (not proposed)", Found.Name) : Found.Name;
+    public string Version => Found.Version ?? "";
+    public string Publisher => Found.Publisher ?? "";
+
+    public string Origin => Found.Origin switch
+    {
+        FoundOrigin.Winget => Found.WingetSource ?? "winget",
+        FoundOrigin.Registry => L.T("Windows"),
+        _ => L.T("Portable folder"),
+    };
+
+    /// <summary>Paquet winget ou Store exact, sinon source à chercher à l'ajout.</summary>
+    public string Source => Found.IsSure ? Found.WingetId! : L.T("to search");
+}
+
 /// <summary>Textes et listes de choix partagés par les fenêtres.</summary>
 public static class Texts
 {

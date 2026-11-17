@@ -313,6 +313,31 @@ internal static class FrenchCatalog
         ["Installed: {0}\nLatest version: {1}"] = "Installée : {0}\nDernière version : {1}",
         ["Test failed, nothing was saved: {0}"] = "Échec du test, rien n'a été enregistré : {0}",
 
+        // Relevé des logiciels de ce PC
+        ["Scan this PC…"] = "Relever sur ce PC…",
+        ["Software of this PC"] = "Logiciels de ce PC",
+        ["Reading the software of this PC…"] = "Relevé des logiciels de ce PC…",
+        ["The software of this PC could not be read: {0}"] = "Les logiciels de ce PC n'ont pas pu être relevés : {0}",
+        ["{0} software of this PC not in the profile."] = "{0} logiciels de ce PC absents du profil.",
+        ["Filter"] = "Filtre",
+        ["Show the software not proposed"] = "Afficher les logiciels non proposés",
+        ["Publisher"] = "Éditeur",
+        ["Found in"] = "Trouvé dans",
+        ["Windows"] = "Windows",
+        ["Portable folder"] = "Dossier des portables",
+        ["Portable software folder"] = "Dossier des logiciels portables",
+        ["to search"] = "à chercher",
+        ["{0} (not proposed)"] = "{0} (non proposé)",
+        ["Add to profile"] = "Ajouter au profil",
+        ["Do not propose again"] = "Ne plus proposer",
+        ["Propose again"] = "Proposer de nouveau",
+        ["Tick the software to add."] = "Cochez les logiciels à ajouter.",
+        ["Searching for a source for {0}…"] = "Recherche d'une source pour {0}…",
+        ["Proposed source"] = "Source proposée",
+        ["Chocolatey: {0}"] = "Chocolatey : {0}",
+        ["GitHub: {0}"] = "GitHub : {0}",
+        ["Download page (to fill in)"] = "Page de téléchargement (à compléter)",
+
         // Dépôt du profil sur le compte de l'utilisateur
         ["The private repository {0} does not exist on your GitHub account yet, or UtilitiesManager has no access to it.\n\nCreate it on GitHub (private), then allow access."] =
             "Le dépôt privé {0} n'existe pas encore sur le compte GitHub, ou UtilitiesManager n'y a pas accès.\n\nLe créer sur GitHub (privé), puis autoriser l'accès.",
@@ -336,7 +361,7 @@ internal static class FrenchCatalog
         ["Unknown command."] = "Commande inconnue.",
         ["Unknown option: {0}"] = "Option inconnue : {0}",
         ["{0} is not in the profile."] = "{0} n'est pas dans le profil.",
-        ["Usage: UtilitiesManager.exe <command> [--json]\n\n  check                    Check the software of the profile and the Windows settings\n  install <id> | --all     Install a software of the profile missing on this PC (or all of them)\n  update <id> | --all      Install an available update (or all of them)\n  revert <id>              Go back to the previous version kept on this PC\n  settings apply <id>      Apply a Windows setting of the profile\n  settings restore <id>    Restore a Windows setting\n  profile import <file>    Import a profile file (local copy)\n  profile sync             Read the profile again from GitHub\n  help                     This help\n\n  --json                   Result in JSON on the standard output (progress on the error output)\n\nExit code: 0 done, 1 failure, 2 incorrect command line, 3 actions waiting, 4 another operation in progress."] =
-            "Utilisation : UtilitiesManager.exe <commande> [--json]\n\n  check                    Vérifie les logiciels du profil et les réglages Windows\n  install <id> | --all     Installe un logiciel du profil absent de ce PC (ou tous)\n  update <id> | --all      Installe une mise à jour disponible (ou toutes)\n  revert <id>              Revient à la version précédente gardée sur ce PC\n  settings apply <id>      Applique un réglage Windows du profil\n  settings restore <id>    Rétablit un réglage Windows\n  profile import <fichier> Importe un fichier de profil (copie locale)\n  profile sync             Relit le profil sur GitHub\n  help                     Cette aide\n\n  --json                   Résultat en JSON sur la sortie standard (avancement sur la sortie d'erreur)\n\nCode de sortie : 0 fait, 1 échec, 2 ligne de commande incorrecte, 3 actions en attente, 4 autre opération en cours.",
+        ["Usage: UtilitiesManager.exe <command> [--json]\n\n  check                    Check the software of the profile and the Windows settings\n  scan                     List the software of this PC that is not in the profile\n  install <id> | --all     Install a software of the profile missing on this PC (or all of them)\n  update <id> | --all      Install an available update (or all of them)\n  revert <id>              Go back to the previous version kept on this PC\n  settings apply <id>      Apply a Windows setting of the profile\n  settings restore <id>    Restore a Windows setting\n  profile import <file>    Import a profile file (local copy)\n  profile sync             Read the profile again from GitHub\n  help                     This help\n\n  --json                   Result in JSON on the standard output (progress on the error output)\n\nExit code: 0 done, 1 failure, 2 incorrect command line, 3 actions waiting, 4 another operation in progress."] =
+            "Utilisation : UtilitiesManager.exe <commande> [--json]\n\n  check                    Vérifie les logiciels du profil et les réglages Windows\n  scan                     Liste les logiciels de ce PC absents du profil\n  install <id> | --all     Installe un logiciel du profil absent de ce PC (ou tous)\n  update <id> | --all      Installe une mise à jour disponible (ou toutes)\n  revert <id>              Revient à la version précédente gardée sur ce PC\n  settings apply <id>      Applique un réglage Windows du profil\n  settings restore <id>    Rétablit un réglage Windows\n  profile import <fichier> Importe un fichier de profil (copie locale)\n  profile sync             Relit le profil sur GitHub\n  help                     Cette aide\n\n  --json                   Résultat en JSON sur la sortie standard (avancement sur la sortie d'erreur)\n\nCode de sortie : 0 fait, 1 échec, 2 ligne de commande incorrecte, 3 actions en attente, 4 autre opération en cours.",
     };
 }

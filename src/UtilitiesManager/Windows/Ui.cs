@@ -131,6 +131,21 @@ public static class Ui
         return box;
     }
 
+    /// <summary>Colonne de cases à cocher d'un tableau, liée dans les deux sens à <paramref name="property"/>.</summary>
+    public static DataGridTemplateColumn CheckColumn(string property)
+    {
+        var check = new FrameworkElementFactory(typeof(CheckBox));
+        check.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        check.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+        check.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty,
+                         new System.Windows.Data.Binding(property)
+                         {
+                             Mode = System.Windows.Data.BindingMode.TwoWay,
+                             UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged,
+                         });
+        return new DataGridTemplateColumn { CellTemplate = new DataTemplate { VisualTree = check }, Width = 40 };
+    }
+
     /// <summary>Bouton de texte simple (pages et dialogues).</summary>
     public static Button TextButton(string text, Action click, double minWidth = 110)
     {

@@ -18,10 +18,15 @@ runtime .NET Desktop 10 et propose de l'installer s'il manque.
 
 - **Logiciels** : état de chaque logiciel du profil (installé, à jour, mise à jour disponible, en attente, absent).
   Cocher puis "Installer / mettre à jour". Par logiciel : mode (automatique ou à valider), âge minimum d'une
-  version, version bloquée, retour à la version précédente.
+  version, version bloquée, retour à la version précédente. "Relever sur ce PC…" liste les logiciels installés
+  sur ce PC et absents du profil (winget, programmes de Windows, dossier des logiciels portables, "C:\Logiciels" par
+  défaut) : ceux connus de winget sont ajoutés directement, les autres s'ouvrent dans la fenêtre du logiciel avec la
+  source trouvée (winget, Chocolatey, GitHub ou page de téléchargement à compléter). "Ne plus proposer" les écarte
+  sur ce PC.
 - **Réglages Windows** : appliquer ou rétablir les réglages du profil (menu contextuel classique, extensions
   visibles, barre des tâches...). "Relever sur ce PC" ajoute au profil les réglages connus déjà modifiés sur ce PC.
-- **Paramètres** : profil, connexion GitHub, lancement au démarrage, raccourcis, thème et langue.
+- **Paramètres** : profil, connexion GitHub, lancement au démarrage, raccourcis, dossier des logiciels portables,
+  thème et langue.
 - L'icône de notification indique le nombre d'actions en attente. La vérification a lieu à l'ouverture de
   session, puis chaque jour, ou à la demande ("Vérifier maintenant").
 
@@ -35,6 +40,7 @@ du profil est proposé à la désinstallation.
 | Commande | Effet |
 |---|---|
 | `check` | Vérifie les logiciels du profil et les réglages Windows |
+| `scan` | Liste les logiciels de ce PC absents du profil |
 | `install <id>` ou `install --all` | Installe un logiciel absent (ou tous) |
 | `update <id>` ou `update --all` | Installe une mise à jour disponible (ou toutes) |
 | `revert <id>` | Revient à la version précédente gardée sur le PC |

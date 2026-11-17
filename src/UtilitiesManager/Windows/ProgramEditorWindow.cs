@@ -28,7 +28,9 @@ public sealed class ProgramEditorWindow : ThemedWindow
     private readonly StackPanel _buttons = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
     private string _source;
 
-    public ProgramEditorWindow(AppServices services, Profile profile, ProgramEntry entry, bool isNew)
+    /// <param name="candidates">Sources proposées par le relevé : la liste "Source proposée" recharge le formulaire.</param>
+    public ProgramEditorWindow(AppServices services, Profile profile, ProgramEntry entry, bool isNew,
+                               IReadOnlyList<SourceCandidate>? candidates = null)
     {
         _services = services;
         _profile = profile;
@@ -43,6 +45,8 @@ public sealed class ProgramEditorWindow : ThemedWindow
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         var form = new StackPanel { Margin = new Thickness(20, 16, 20, 8) };
+        if (candidates is { Count: > 1 })
+            form.Children.Add(Ui.Row(L.T("Proposed source"), Ui.Choices(candidates.Select(c => (c, c.Label)).ToList(), candidates[0], c => Load(c.Entry))));
         Section(form, L.T("Software"));
         Text(form, L.T("Identifier"), All, e => e.Id, (e, v) => e.Id = v ?? "", enabled: isNew);
         Text(form, L.T("Name"), All, e => e.Name, (e, v) => e.Name = v ?? "");
@@ -51,7 +55,8 @@ public sealed class ProgramEditorWindow : ThemedWindow
             _source = value;
             ShowFields();
         });
-        AddRow(form, L.T("Source"), source, All, _ => { }, e => e.Source = _source);
+        AddRow(form, L.T("Source"), source, All,
+               e => source.SelectedItem = source.Items.OfType<ComboBoxItem>().First(i => Equals(i.Tag, e.Source)), e => e.Source = _source);
 
         Section(form, L.T("Options"));
         var mode = Ui.Choices([(null, L.T("Profile default ({0})", Texts.Mode(profile.Defaults.Mode))),
@@ -100,10 +105,8 @@ public sealed class ProgramEditorWindow : ThemedWindow
         Text(form, L.T("Command"), [S.Zip, S.Download, S.Command], e => e.Latest?.Command, (e, v) => Latest(e).Command = v);
         Text(form, L.T("Version pattern"), [S.Zip, S.Download, S.Command], e => e.Latest?.Regex, (e, v) => Latest(e).Regex = v);
 
-        foreach (var field in _fields)
-            field.Load(entry);
         Entry = entry;
-        ShowFields();
+        Load(entry);
 
         _buttons.Children.Add(Ui.TextButton(L.T("Test"), () => _ = TestAsync(save: false)));
         var save = Ui.TextButton(L.T("Save"), () => _ = TestAsync(save: true));
@@ -156,6 +159,15 @@ public sealed class ProgramEditorWindow : ThemedWindow
         var box = new CheckBox { Content = label, Margin = new Thickness(160, 0, 0, 10) };
         form.Children.Add(box);
         _fields.Add(new Field(box, sources, e => box.IsChecked = get(e), e => set(e, box.IsChecked == true)));
+    }
+
+    /// <summary>Remplit le formulaire avec l'entrée.</summary>
+    private void Load(ProgramEntry entry)
+    {
+        _source = entry.Source;
+        foreach (var field in _fields)
+            field.Load(entry);
+        ShowFields();
     }
 
     /// <summary>Seuls les champs de la source choisie sont affichés.</summary>

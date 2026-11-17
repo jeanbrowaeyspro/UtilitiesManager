@@ -142,12 +142,7 @@ public sealed class MainWindow : ThemedWindow
 
     private FrameworkElement BuildProgramsTab()
     {
-        var check = new FrameworkElementFactory(typeof(CheckBox));
-        check.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
-        check.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
-        check.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty,
-                         new Binding(nameof(ProgramRow.Selected)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
-        _programs.Columns.Add(new DataGridTemplateColumn { CellTemplate = new DataTemplate { VisualTree = check }, Width = 40 });
+        _programs.Columns.Add(Ui.CheckColumn(nameof(ProgramRow.Selected)));
         Column(L.T("Software"), nameof(ProgramRow.Name), 220);
         Column(L.T("Source"), nameof(ProgramRow.Source), 100);
         Column(L.T("Installed"), nameof(ProgramRow.Installed), 130);
@@ -174,6 +169,7 @@ public sealed class MainWindow : ThemedWindow
         buttons.Children.Add(_pause);
         buttons.Children.Add(Action(L.T("Check now"), () => _ = _controller.CheckAsync(manual: true)));
         buttons.Children.Add(Action(L.T("Add…"), () => _ = AddAsync()));
+        buttons.Children.Add(Action(L.T("Scan this PC…"), () => _ = ScanAsync(), 130));
         buttons.Children.Add(Action(L.T("Change…"), () => _ = EditAsync()));
         buttons.Children.Add(Action(L.T("Remove from profile"), () => _ = RemoveAsync(), 160));
         _revert = Action(L.T("Revert to previous version"), () => _ = RevertAsync(), 200);
@@ -235,19 +231,35 @@ public sealed class MainWindow : ThemedWindow
         var search = new WingetSearchWindow(_controller.Services.Winget) { Owner = this };
         if (search.ShowDialog() != true)
             return;
-        var entry = new ProgramEntry { Source = Sources.Download };
-        if (search.Chosen is { } package)
-        {
-            var store = package.Source.Equals("msstore", StringComparison.OrdinalIgnoreCase);
-            entry = new ProgramEntry
-            {
-                Id = Regex.Replace(package.Id.ToLowerInvariant(), "[^a-z0-9.-]+", "-").Trim('-', '.'),
-                Name = package.Name,
-                Source = store ? Sources.MsStore : Sources.Winget,
-                Package = package.Id,
-            };
-        }
+        var entry = search.Chosen is { } package ? SourceFinder.FromPackage(package, profile).Entry : new ProgramEntry { Source = Sources.Download };
         await EditEntryAsync(profile, entry, isNew: true);
+    }
+
+    /// <summary>
+    /// Relevé des logiciels de ce PC absents du profil : les paquets winget exacts sont ajoutés directement, les
+    /// autres ouverts un par un dans l'éditeur, prérempli avec la source trouvée.
+    /// </summary>
+    private async Task ScanAsync()
+    {
+        if (_controller.Profile is not { } profile)
+            return;
+        var scan = new ScanWindow(_controller.Services, () => _controller.ScanAsync(profile)) { Owner = this };
+        if (scan.ShowDialog() != true)
+            return;
+        var sure = scan.Chosen.Where(f => f.IsSure).ToList();
+        if (sure.Count > 0 && !await _controller.EditProfileAsync(changed =>
+            {
+                foreach (var found in sure)
+                    changed.Programs.Add(SourceFinder.SureCandidate(found, changed)!.Entry);
+            }, $"Ajout de {string.Join(", ", sure.Select(f => f.Name))} relevés sur ce PC"))
+            return;
+        foreach (var found in scan.Chosen.Where(f => !f.IsSure))
+        {
+            if (_controller.Profile is not { } current
+                || await _controller.FindSourcesAsync(found, current) is not { } candidates
+                || !await EditEntryAsync(current, candidates[0].Entry, isNew: true, candidates))
+                return;
+        }
     }
 
     private async Task EditAsync()
@@ -259,13 +271,15 @@ public sealed class MainWindow : ThemedWindow
             await EditEntryAsync(profile, entry, isNew: false);
     }
 
-    private async Task EditEntryAsync(Profile profile, ProgramEntry entry, bool isNew)
+    /// <summary>Éditeur du logiciel puis enregistrement dans le profil ; faux si annulé ou refusé.</summary>
+    private async Task<bool> EditEntryAsync(Profile profile, ProgramEntry entry, bool isNew,
+                                            IReadOnlyList<SourceCandidate>? candidates = null)
     {
-        var editor = new ProgramEditorWindow(_controller.Services, profile, entry, isNew) { Owner = this };
+        var editor = new ProgramEditorWindow(_controller.Services, profile, entry, isNew, candidates) { Owner = this };
         if (editor.ShowDialog() != true)
-            return;
+            return false;
         var saved = editor.Entry;
-        await _controller.EditProfileAsync(changed =>
+        return await _controller.EditProfileAsync(changed =>
         {
             var index = changed.Programs.FindIndex(p => p.Id == (isNew ? saved.Id : entry.Id));
             if (index >= 0 && !isNew)
@@ -373,6 +387,7 @@ public sealed class MainWindow : ThemedWindow
         _settings.Children.Add(Ui.Check(L.T("Show the notification area icon"), settings.TrayIcon, v => Save(() => settings.TrayIcon = v)));
         _settings.Children.Add(Ui.Check(L.T("Desktop shortcut"), settings.DesktopShortcut, v => Save(() => settings.DesktopShortcut = v)));
         _settings.Children.Add(Ui.Check(L.T("Start menu shortcut"), settings.StartMenuShortcut, v => Save(() => settings.StartMenuShortcut = v)));
+        _settings.Children.Add(Ui.Row(L.T("Portable software folder"), Ui.TextButton(settings.PortableFolder, ChoosePortableFolder)));
 
         _settings.Children.Add(Section(L.T("UtilitiesManager updates")));
         _settings.Children.Add(Ui.Check(L.T("Show the release notes"), settings.ShowReleaseNotes, v => Save(() => settings.ShowReleaseNotes = v)));
@@ -383,6 +398,16 @@ public sealed class MainWindow : ThemedWindow
                                                                settings.Theme, _controller.SetTheme)));
         _settings.Children.Add(Ui.Row(L.T("Language"), Ui.Choices([(L.System, L.T("System")), (L.French, "Français"), (L.English, "English")],
                                                                   settings.Language, language => Dispatcher.BeginInvoke(() => _controller.SetLanguage(language)))));
+    }
+
+    /// <summary>Dossier des logiciels portables parcouru par le relevé.</summary>
+    private void ChoosePortableFolder()
+    {
+        var dialog = new OpenFolderDialog { Title = L.T("Portable software folder"), InitialDirectory = _controller.Settings.PortableFolder };
+        if (dialog.ShowDialog(this) != true)
+            return;
+        Save(() => _controller.Settings.PortableFolder = dialog.FolderName);
+        BuildSettings();
     }
 
     private static TextBlock Section(string title)

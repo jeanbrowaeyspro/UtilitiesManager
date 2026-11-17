@@ -1,5 +1,13 @@
 # Nouveautés
 
+## [0.0.8] - 2026-11-17
+
+### Ajouté
+- Bouton "Relever sur ce PC…" dans l'onglet Logiciels : liste les logiciels installés sur ce PC et absents du profil (winget, programmes inscrits dans Windows, dossier des logiciels portables, "C:\Logiciels" par défaut). Les logiciels cochés connus de winget sont ajoutés directement au profil. Les autres s'ouvrent un par un dans la fenêtre du logiciel, préremplie avec la source trouvée (winget, Chocolatey, GitHub ou page de téléchargement à compléter), à choisir dans "Source proposée".
+- "Ne plus proposer" : logiciels du relevé écartés sur ce PC, que "Proposer de nouveau" remet dans la liste.
+- Paramètres : dossier des logiciels portables parcouru par le relevé.
+- Ligne de commande : `scan` liste les logiciels de ce PC absents du profil.
+
 ## [0.0.7] - 2026-11-17
 
 ### Corrigé
