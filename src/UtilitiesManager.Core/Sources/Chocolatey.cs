@@ -124,6 +124,7 @@ public static class Chocolatey
         using var zip = ZipFile.OpenRead(package);
         var entry = zip.Entries.FirstOrDefault(e => Regex.IsMatch(e.FullName.Replace('\\', '/'), pattern, RegexOptions.IgnoreCase))
                     ?? throw new InvalidDataException(L.T("The package does not contain the installer {0}.", pattern));
+        Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, entry.Name);
         entry.ExtractToFile(path, overwrite: true);
         return path;

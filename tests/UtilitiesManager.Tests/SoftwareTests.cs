@@ -129,6 +129,26 @@ public class SoftwareTests
     }
 
     [Fact]
+    public void ChocolateyInstallerIsExtractedIntoAFolderNotYetCreated()
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var package = Path.Combine(folder, "outil.1.0.nupkg");
+            using (var zip = System.IO.Compression.ZipFile.Open(package, System.IO.Compression.ZipArchiveMode.Create))
+            using (var writer = new StreamWriter(zip.CreateEntry("tools/outil-setup.exe").Open()))
+                writer.Write("installeur");
+            var installer = Chocolatey.ExtractInstaller(package, @"\.(exe|msi)$", Path.Combine(folder, "installer"));
+            Assert.Equal(Path.Combine(folder, "installer", "outil-setup.exe"), installer);
+            Assert.Equal("installeur", File.ReadAllText(installer));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void StateFollowsInstallationAgeAndBlockedVersion()
     {
         var defaults = new ProfileDefaults { Mode = Modes.Confirm, MinAgeDays = 5 };
