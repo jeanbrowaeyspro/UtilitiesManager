@@ -126,7 +126,7 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
         List<(ProgramEntry Program, string Message)> failed;
         try
         {
-            (done, failed) = await _actions.RunAsync(targets.Select(t => t.Program), last, profile, Progress, control);
+            (done, failed) = await _actions.RunAsync(targets.Select(t => t.Program), last, profile, Progress, _ => { }, control);
         }
         finally
         {

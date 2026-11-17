@@ -78,6 +78,7 @@ public sealed class MainWindow : ThemedWindow
         _controller.StateChanged += Refresh;
         _controller.LogLine += AppendLog;
         _controller.Progress += ShowProgress;
+        _controller.Stepped += ShowStep;
         _controller.Services.Account.Changed += OnAccountChanged;
         Closing += (_, _) => SavePlacement();
         Closed += (_, _) =>
@@ -85,6 +86,7 @@ public sealed class MainWindow : ThemedWindow
             _controller.StateChanged -= Refresh;
             _controller.LogLine -= AppendLog;
             _controller.Progress -= ShowProgress;
+            _controller.Stepped -= ShowStep;
             _controller.Services.Account.Changed -= OnAccountChanged;
         };
         Refresh();
@@ -451,7 +453,7 @@ public sealed class MainWindow : ThemedWindow
         var last = _controller.Last;
         var selected = Current?.Status.Program.Id;
         var rows = profile is not null && last is not null
-            ? last.Programs.Select(s => new ProgramRow(s, profile.Defaults)).ToList()
+            ? last.Programs.Select(s => new ProgramRow(s, profile.Defaults, _controller.StepOf(s.Program.Id))).ToList()
             : [];
         _programs.ItemsSource = rows;
         _programs.SelectedItem = rows.FirstOrDefault(r => r.Status.Program.Id == selected);
@@ -464,6 +466,13 @@ public sealed class MainWindow : ThemedWindow
         UpdateButtons();
         if (!_controller.Busy)
             ShowProgress(null);
+    }
+
+    /// <summary>Met à jour la seule ligne du logiciel (sélection et défilement conservés).</summary>
+    private void ShowStep(BatchStep step)
+    {
+        if (Rows.FirstOrDefault(r => r.Status.Program.Id == step.Id) is { } row)
+            row.Step = step;
     }
 
     private void UpdateButtons()

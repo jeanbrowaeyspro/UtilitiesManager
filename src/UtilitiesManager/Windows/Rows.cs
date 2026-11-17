@@ -5,9 +5,10 @@ using UtilitiesManager.ViewModels;
 namespace UtilitiesManager;
 
 /// <summary>Ligne de l'onglet Logiciels : un logiciel du profil (ou retiré du profil) et son état sur ce PC.</summary>
-public sealed class ProgramRow(ProgramStatus status, ProfileDefaults defaults) : ObservableObject
+public sealed class ProgramRow(ProgramStatus status, ProfileDefaults defaults, BatchStep? step = null) : ObservableObject
 {
     private bool _selected = status.NeedsAction;
+    private BatchStep? _step = step;
 
     public ProgramStatus Status { get; } = status;
 
@@ -19,11 +20,39 @@ public sealed class ProgramRow(ProgramStatus status, ProfileDefaults defaults) :
 
     public string Name => Status.Program.Name;
     public string Source => Status.Program.Source;
-    public string Installed => Status.Installed.Present ? Status.Installed.Version ?? L.T("unknown") : L.T("not installed");
+    /// <summary>Étape pendant une série d'installations ; remplace l'état jusqu'à la vérification suivante.</summary>
+    public BatchStep? Step
+    {
+        get => _step;
+        set
+        {
+            if (!Set(ref _step, value))
+                return;
+            OnPropertyChanged(nameof(State));
+            OnPropertyChanged(nameof(Installed));
+        }
+    }
+
+    private bool Uninstall => Status.State == ProgramState.Removed;
+
+    public string Installed => _step is { State: StepState.Done }
+        ? Uninstall ? L.T("not installed") : _step.Text ?? Status.Latest?.Version ?? L.T("unknown")
+        : Status.Installed.Present ? Status.Installed.Version ?? L.T("unknown") : L.T("not installed");
     public string Available => Status.Latest?.Version ?? "";
     public string Mode => Status.State == ProgramState.Removed ? "" : Texts.Mode(Status.Program.ModeOr(defaults));
 
-    public string State => Status.State switch
+    public string State => _step?.State switch
+    {
+        StepState.Waiting => L.T("Waiting"),
+        StepState.Running => Uninstall ? L.T("Uninstalling") : L.T("In progress"),
+        StepState.Paused => L.T("Paused"),
+        StepState.Done => Uninstall ? L.T("Uninstalled") : L.T("Up to date"),
+        StepState.Failed => L.T("Failed: {0}", _step.Text),
+        StepState.Skipped => L.T("Not processed"),
+        _ => CheckedState,
+    };
+
+    private string CheckedState => Status.State switch
     {
         ProgramState.UpToDate => L.T("Up to date"),
         ProgramState.UpdateAvailable => L.T("Update available"),

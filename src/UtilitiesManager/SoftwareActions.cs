@@ -31,18 +31,18 @@ public sealed class SoftwareActions(AppServices services)
     /// pause ou arrête la série. Renvoie les logiciels réussis et ceux en échec avec leur message.
     /// </summary>
     public async Task<(List<ProgramEntry> Done, List<(ProgramEntry Program, string Message)> Failed)> RunAsync(
-        IEnumerable<ProgramEntry> chosen, CheckResult last, Profile profile, Action<string, double?> report, BatchControl control)
+        IEnumerable<ProgramEntry> chosen, CheckResult last, Profile profile, Action<string, double?> report,
+        Action<BatchStep> step, BatchControl control)
     {
-        var items = InstallService.Order(chosen)
-            .Select(p => new ElevatedItem(p, last.Programs.FirstOrDefault(s => s.Program.Id == p.Id) is { State: ProgramState.Removed } s
-                                                 ? s.Installed : null))
-            .ToList();
+        var items = InstallService.Order(chosen).Select(p => Item(p, last)).ToList();
+        foreach (var item in items)
+            step(new BatchStep(item.Program.Id, StepState.Waiting));
         var done = new List<ProgramEntry>();
         var failed = new List<(ProgramEntry, string)>();
         var here = items;
         var elevated = items.Where(i => i.Program.Source != Sources.MsStore).ToList();
         if (elevated.Count >= 2 && !ElevatedRunner.IsAdministrator
-            && await ElevatedRunner.RunAsync(elevated, profile, Scaled(report, 0, elevated.Count, items.Count), control) is { } result)
+            && await ElevatedRunner.RunAsync(elevated, profile, Scaled(report, 0, elevated.Count, items.Count), step, control) is { } result)
         {
             services.State.Reload(services.Paths.StateFile);
             var byId = elevated.ToDictionary(i => i.Program.Id, i => i.Program);
@@ -51,14 +51,26 @@ public sealed class SoftwareActions(AppServices services)
             here = items.Except(elevated).ToList();
         }
         var offset = items.Count - here.Count;
-        var (hereDone, hereFailed) = await RunHereAsync(here, profile, Scaled(report, offset, here.Count, items.Count), control);
+        var (hereDone, hereFailed) = await RunHereAsync(here, profile, Scaled(report, offset, here.Count, items.Count), step, control);
         done.AddRange(hereDone);
         failed.AddRange(hereFailed);
-        var skipped = items.Count - done.Count - failed.Count;
-        if (control.Stopped && skipped > 0)
-            report(L.T("Stopped: {0} software not processed.", skipped), 1);
+        var processed = done.Concat(failed.Select(f => f.Item1)).Select(p => p.Id).ToHashSet();
+        var skipped = items.Where(i => !processed.Contains(i.Program.Id)).ToList();
+        foreach (var item in skipped)
+            step(new BatchStep(item.Program.Id, StepState.Skipped));
+        if (skipped.Count > 0)
+            report(L.T("Stopped: {0} software not processed.", skipped.Count), 1);
         return (done, failed);
     }
+
+    /// <summary>Logiciel de la série : à désinstaller (retiré du profil), à mettre à jour ou à installer.</summary>
+    private static ElevatedItem Item(ProgramEntry program, CheckResult last) =>
+        last.Programs.FirstOrDefault(s => s.Program.Id == program.Id) switch
+        {
+            { State: ProgramState.Removed } s => new ElevatedItem(program, s.Installed),
+            { Installed.Present: true } => new ElevatedItem(program, null, Update: true),
+            _ => new ElevatedItem(program, null),
+        };
 
     /// <summary>Avancement d'une partie de la série ramené à la série entière.</summary>
     private static Action<string, double?> Scaled(Action<string, double?> report, int offset, int count, int total) =>
@@ -70,8 +82,10 @@ public sealed class SoftwareActions(AppServices services)
     /// deux logiciels.
     /// </summary>
     public async Task<(List<ProgramEntry> Done, List<(ProgramEntry Program, string Message)> Failed)> RunHereAsync(
-        IReadOnlyList<ElevatedItem> items, Profile profile, Action<string, double?> report, BatchControl control)
+        IReadOnlyList<ElevatedItem> items, Profile profile, Action<string, double?> report, Action<BatchStep> step,
+        BatchControl control)
     {
+        var desktop = DesktopIcons.OfThisUser();
         var done = new List<ProgramEntry>();
         var failed = new List<(ProgramEntry, string)>();
         // Le premier logiciel se télécharge à son tour, avec sa progression ; les suivants à l'avance.
@@ -82,10 +96,14 @@ public sealed class SoftwareActions(AppServices services)
         {
             for (var i = 0; i < items.Count; i++)
             {
+                var (program, removed, update) = items[i];
+                if (control.Paused)
+                    step(new BatchStep(program.Id, StepState.Paused));
                 await control.WaitIfPausedAsync();
                 if (control.Stopped)
                     break;
-                var (program, removed) = items[i];
+                step(new BatchStep(program.Id, StepState.Running));
+                var icons = update ? desktop.Snapshot() : null;
                 var index = i;
                 var progress = new Progress<InstallStep>(step =>
                     report($"{step.Program} : {step.Text}", (index + (step.Fraction ?? 0)) / items.Count));
@@ -109,6 +127,8 @@ public sealed class SoftwareActions(AppServices services)
                 }
                 if (download is { IsCompletedSuccessfully: true })
                     download.Result.Discard();
+                if (icons is not null)
+                    RemoveIcons(program, desktop, icons, report, (i + 1.0) / items.Count);
                 Record(program, outcome, i);
             }
         }
@@ -124,16 +144,28 @@ public sealed class SoftwareActions(AppServices services)
             services.SaveState();
             if (outcome.Succeeded)
             {
+                step(new BatchStep(program.Id, StepState.Done, outcome.Version));
                 done.Add(program);
                 report(L.T("{0}: done.", program.Name), (i + 1.0) / items.Count);
             }
             else
             {
                 var message = outcome.Message ?? L.T("cancelled");
+                step(new BatchStep(program.Id, StepState.Failed, message));
                 failed.Add((program, message));
                 report(L.T("{0}: {1}", program.Name, message), (i + 1.0) / items.Count);
             }
         }
+    }
+
+    /// <summary>Retire les icônes qu'une mise à jour vient d'ajouter au Bureau.</summary>
+    private static void RemoveIcons(ProgramEntry program, DesktopIcons desktop, HashSet<string> before,
+                                    Action<string, double?> report, double fraction)
+    {
+        foreach (var (name, error) in desktop.RemoveAdded(before))
+            report(error is null
+                ? L.T("{0}: icon \"{1}\" removed from the Desktop.", program.Name, name)
+                : L.T("{0}: icon \"{1}\" left on the Desktop: {2}", program.Name, name, error), fraction);
     }
 
     /// <summary>Téléchargement à l'avance : attend la fin d'une pause pour commencer, annulé par l'arrêt.</summary>

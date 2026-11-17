@@ -48,7 +48,31 @@ public sealed class AppController
     /// <summary>Compte connecté mais dépôt du profil introuvable ou sans accès : création guidée à proposer.</summary>
     public bool ProfileRepositoryMissing { get; private set; }
 
-    public CheckResult? Last { get; private set; }
+    /// <summary>Dernière vérification ; la remplacer efface les étapes de la série précédente.</summary>
+    public CheckResult? Last
+    {
+        get => _last;
+        private set
+        {
+            _last = value;
+            _steps.Clear();
+        }
+    }
+
+    private CheckResult? _last;
+    private readonly Dictionary<string, BatchStep> _steps = [];
+
+    /// <summary>Étape d'un logiciel dans la série en cours ou la dernière (jusqu'à la vérification suivante).</summary>
+    public BatchStep? StepOf(string id) => _steps.GetValueOrDefault(id);
+
+    /// <summary>Un logiciel de la série change d'étape.</summary>
+    public event Action<BatchStep>? Stepped;
+
+    private void OnStep(BatchStep step)
+    {
+        _steps[step.Id] = step;
+        Stepped?.Invoke(step);
+    }
 
     public bool Busy { get; private set; }
 
@@ -354,7 +378,7 @@ public sealed class AppController
         StateChanged?.Invoke();
         try
         {
-            return await _actions.RunAsync(programs, last, profile, Report, Batch);
+            return await _actions.RunAsync(programs, last, profile, Report, OnStep, Batch);
         }
         finally
         {

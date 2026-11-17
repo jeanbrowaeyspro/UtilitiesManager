@@ -3,8 +3,11 @@ using UtilitiesManager.Profiles;
 
 namespace UtilitiesManager.Software;
 
-/// <summary>Logiciel confié au processus administrateur ; <paramref name="Removed"/> : à désinstaller.</summary>
-public sealed record ElevatedItem(ProgramEntry Program, InstalledInfo? Removed);
+/// <summary>
+/// Logiciel d'une série ; <paramref name="Removed"/> : à désinstaller ; <paramref name="Update"/> : déjà installé
+/// (mise à jour, les icônes ajoutées au Bureau sont retirées).
+/// </summary>
+public sealed record ElevatedItem(ProgramEntry Program, InstalledInfo? Removed, bool Update = false);
 
 /// <summary>Série d'installations confiée au processus administrateur (profil en JSON).</summary>
 public sealed record ElevatedRequest(string Profile, List<ElevatedItem> Items);
@@ -13,10 +16,10 @@ public sealed record ElevatedFailure(string Id, string Message);
 
 /// <summary>
 /// Message du processus administrateur : étape (<paramref name="Text"/>, <paramref name="Fraction"/>), ou bilan
-/// final (<paramref name="Done"/>, <paramref name="Failed"/>).
+/// final (<paramref name="Done"/>, <paramref name="Failed"/>), ou étape d'un logiciel (<paramref name="Step"/>).
 /// </summary>
 public sealed record ElevatedReport(string? Text = null, double? Fraction = null, List<string>? Done = null,
-                                   List<ElevatedFailure>? Failed = null);
+                                   List<ElevatedFailure>? Failed = null, BatchStep? Step = null);
 
 /// <summary>
 /// Échanges entre la fenêtre et le processus administrateur qui mène toute une série d'installations (une seule

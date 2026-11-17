@@ -31,7 +31,8 @@ public static class ElevatedRunner
     /// sont refusés ou si le processus ne répond pas (la série se fait alors dans ce processus).
     /// </summary>
     public static async Task<ElevatedReport?> RunAsync(IReadOnlyList<ElevatedItem> items, Profile profile,
-                                                      Action<string, double?> report, BatchControl control)
+                                                      Action<string, double?> report, Action<BatchStep> step,
+                                                      BatchControl control)
     {
         var name = $"UtilitiesManager_{Guid.NewGuid():N}";
         await using var pipe = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
@@ -101,7 +102,10 @@ public static class ElevatedRunner
                     var message = ElevatedProtocol.Read<ElevatedReport>(line);
                     if (message.Done is not null)
                         return message with { Failed = message.Failed ?? [] };
-                    report(message.Text ?? "", message.Fraction);
+                    if (message.Step is { } itemStep)
+                        step(itemStep);
+                    else
+                        report(message.Text ?? "", message.Fraction);
                 }
             }
             finally
@@ -112,6 +116,8 @@ public static class ElevatedRunner
         // Interrompu sans bilan : la vérification qui suit dira ce qui a été installé.
         var interrupted = L.T("the administrator process stopped unexpectedly");
         report(L.T("Installations interrupted: {0}.", interrupted), null);
+        foreach (var item in items)
+            step(new BatchStep(item.Program.Id, StepState.Failed, interrupted));
         return new ElevatedReport(Done: [], Failed: [.. items.Select(i => new ElevatedFailure(i.Program.Id, interrupted))]);
     }
 
@@ -157,7 +163,8 @@ public static class ElevatedRunner
             });
             Log.Info($"Processus administrateur : {request.Items.Count} logiciel(s)");
             var (done, failed) = await new SoftwareActions(services).RunHereAsync(
-                request.Items, Profile.Parse(request.Profile), (text, fraction) => Send(new ElevatedReport(text, fraction)), control);
+                request.Items, Profile.Parse(request.Profile), (text, fraction) => Send(new ElevatedReport(text, fraction)),
+                itemStep => Send(new ElevatedReport(Step: itemStep)), control);
             Send(new ElevatedReport(Done: [.. done.Select(p => p.Id)],
                                     Failed: [.. failed.Select(f => new ElevatedFailure(f.Program.Id, f.Message))]));
             return failed.Count > 0 ? CliCommand.ExitFailed : CliCommand.ExitOk;

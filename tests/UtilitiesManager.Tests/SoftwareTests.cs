@@ -108,6 +108,27 @@ public class SoftwareTests
     }
 
     [Fact]
+    public void OnlyDesktopIconsAddedSinceTheSnapshotAreRemoved()
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, "Ancien.lnk"), "");
+            var desktop = new DesktopIcons([folder]);
+            var before = desktop.Snapshot();
+            File.WriteAllText(Path.Combine(folder, "Nouveau.lnk"), "");
+            File.WriteAllText(Path.Combine(folder, "Site.url"), "");
+            File.WriteAllText(Path.Combine(folder, "notes.txt"), "");
+            Assert.Equal(["Nouveau", "Site"], desktop.RemoveAdded(before).Select(r => r.Name).Order());
+            Assert.Equal(["Ancien.lnk", "notes.txt"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void StateFollowsInstallationAgeAndBlockedVersion()
     {
         var defaults = new ProfileDefaults { Mode = Modes.Confirm, MinAgeDays = 5 };
