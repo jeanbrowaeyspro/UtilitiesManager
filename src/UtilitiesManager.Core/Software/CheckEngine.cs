@@ -15,6 +15,11 @@ public enum ProgramState
     Error,
     /// <summary>Logiciel retiré du profil, encore installé ici : proposé à la désinstallation.</summary>
     Removed,
+    /// <summary>
+    /// Logiciel absent qui ne sert que de dépendance : installé avec le logiciel qui en dépend, jamais proposé seul.
+    /// Message : noms des logiciels qui en dépendent.
+    /// </summary>
+    Dependency,
 }
 
 /// <summary>État d'un logiciel après vérification.</summary>
@@ -85,7 +90,8 @@ public sealed class CheckEngine(Winget winget, Detector detector, LatestResolver
             var program = entries[i];
             var status = profile.Find(program.Id) is null
                 ? Removed(program, installed, state)
-                : Evaluate(program, installed, newest, newer, error, profile.Defaults, state, now);
+                : Evaluate(program, installed, newest, newer, error, profile.Defaults, state, now,
+                           profile.Programs.Where(p => p.DependsOn == program.Id).Select(p => p.Name).ToList());
             if (status is null)
                 continue;
             if (installed.Present && status.State != ProgramState.Removed)
@@ -125,12 +131,19 @@ public sealed class CheckEngine(Winget winget, Detector detector, LatestResolver
         }
     }
 
-    /// <summary>État d'un logiciel du profil.</summary>
+    /// <summary>État d'un logiciel du profil ; <paramref name="dependents"/> : noms des logiciels qui en dépendent.</summary>
     public static ProgramStatus Evaluate(ProgramEntry program, InstalledInfo installed, LatestInfo? newest, bool newer, string? error,
-                                         ProfileDefaults defaults, MachineState state, DateTimeOffset now)
+                                         ProfileDefaults defaults, MachineState state, DateTimeOffset now,
+                                         IReadOnlyList<string>? dependents = null)
     {
         if (!installed.Present)
-            return new ProgramStatus(program, installed, newest, error is null ? ProgramState.Missing : ProgramState.Error, error);
+        {
+            if (error is not null)
+                return new ProgramStatus(program, installed, newest, ProgramState.Error, error);
+            return dependents is { Count: > 0 }
+                ? new ProgramStatus(program, installed, newest, ProgramState.Dependency, string.Join(", ", dependents))
+                : new ProgramStatus(program, installed, newest, ProgramState.Missing);
+        }
         if (program.BlockedVersion is not null)
             return new ProgramStatus(program, installed, newest, ProgramState.Blocked);
         if (error is not null)

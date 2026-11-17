@@ -142,6 +142,11 @@ public class SoftwareTests
             CheckEngine.Evaluate(program, info, newest, newer, null, defaults, state, at).State;
 
         Assert.Equal(ProgramState.Missing, Evaluate(InstalledInfo.Absent, latest, true, now));
+        // Absent mais dépendance d'un autre logiciel : installé avec lui, pas proposé seul.
+        var dependency = CheckEngine.Evaluate(program, InstalledInfo.Absent, latest, true, null, defaults, state, now, ["Microsoft 365"]);
+        Assert.Equal(ProgramState.Dependency, dependency.State);
+        Assert.Equal("Microsoft 365", dependency.Message);
+        Assert.False(dependency.NeedsAction);
         Assert.Equal(ProgramState.UpToDate, Evaluate(installed, latest, false, now));
         // Version vue pour la première fois : attendue cinq jours, puis proposée.
         Assert.Equal(ProgramState.Waiting, Evaluate(installed, latest, true, now));

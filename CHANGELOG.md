@@ -9,6 +9,7 @@
 
 ### Corrigé
 - Avec plusieurs écrans à des mises à l'échelle différentes, la fenêtre se rouvre sur son écran, même agrandie (elle pouvait se rouvrir sur l'écran principal).
+- Un logiciel absent qui ne sert que de dépendance (ex. Outil de déploiement Office pour Microsoft 365) n'est plus compté en attente : il est indiqué "Installé au besoin avec ..." et s'installe avec le logiciel qui en dépend. Il reste installable seul en le cochant.
 
 ## [0.0.8] - 2026-11-17
 

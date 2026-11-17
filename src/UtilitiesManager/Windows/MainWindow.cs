@@ -214,7 +214,8 @@ public sealed class MainWindow : ThemedWindow
     private async Task InstallAsync()
     {
         var chosen = Rows.Where(r => r.Selected && r.Status.State is ProgramState.UpdateAvailable or ProgramState.Missing
-                                                                      or ProgramState.Removed or ProgramState.Waiting)
+                                                                      or ProgramState.Removed or ProgramState.Waiting
+                                                                      or ProgramState.Dependency)
                          .Select(r => r.Status).ToList();
         if (chosen.Count == 0)
         {

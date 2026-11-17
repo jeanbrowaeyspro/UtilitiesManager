@@ -142,7 +142,9 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
             return Fail(L.T("{0} is not in the profile.", command.Target));
         var last = await _actions.CheckAsync(profile);
         var targets = last.Programs.Where(p => command.All ? p.State == wanted : p.Program.Id == command.Target).ToList();
-        if (!command.All && targets.Count == 1 && targets[0].State != wanted)
+        // Dépendance seule : jamais dans install --all, installée si elle est nommée.
+        if (!command.All && targets.Count == 1 && targets[0].State != wanted
+            && !(wanted == ProgramState.Missing && targets[0].State == ProgramState.Dependency))
         {
             var row = new ProgramRow(targets[0], profile.Defaults);
             return Fail($"{row.Name} : {row.State}", targets[0].State == ProgramState.UpToDate ? CliCommand.ExitOk : CliCommand.ExitPending);

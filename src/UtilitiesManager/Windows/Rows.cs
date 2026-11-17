@@ -60,6 +60,7 @@ public sealed class ProgramRow(ProgramStatus status, ProfileDefaults defaults, B
         ProgramState.Blocked => L.T("Version blocked ({0})", Status.Program.BlockedVersion),
         ProgramState.Missing => L.T("To install"),
         ProgramState.Removed => L.T("Removed from the profile: to uninstall"),
+        ProgramState.Dependency => L.T("Installed with {0} if needed", Status.Message),
         _ => L.T("Error: {0}", Status.Message),
     };
 }

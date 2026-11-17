@@ -236,6 +236,7 @@ internal static class FrenchCatalog
         ["Available on {0:d}"] = "Disponible le {0:d}",
         ["Version blocked ({0})"] = "Version bloquée ({0})",
         ["To install"] = "À installer",
+        ["Installed with {0} if needed"] = "Installé au besoin avec {0}",
         ["Removed from the profile: to uninstall"] = "Retiré du profil : à désinstaller",
         ["Error: {0}"] = "Erreur : {0}",
         ["Automatic"] = "Automatique",
