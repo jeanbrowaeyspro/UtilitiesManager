@@ -1,5 +1,19 @@
 # Nouveautés
 
+## [1.0.0] - 2026-11-17
+
+Première version stable, qui reprend toutes les versions d'essai 0.0.1 à 0.0.11.
+
+### Ajouté
+- Un seul outil pour installer et tenir à jour les logiciels du profil (winget, Microsoft Store, Chocolatey, GitHub, zip, téléchargement, commande), avec une seule demande de droits administrateur par série d'installations, et "Arrêter" ou "Pause" pendant les installations.
+- Profil rangé dans le dépôt GitHub privé `UtilitiesProfile` de chaque utilisateur (connexion par code, renouvelée d'elle-même), avec une copie locale sur le PC.
+- Options par logiciel : mode automatique ou avec confirmation, âge minimum d'une version, version bloquée, processus à fermer, retour à la version précédente.
+- "Relever sur ce PC" : logiciels installés et réglages Windows déjà modifiés, absents du profil, à y ajouter.
+- Réglages Windows du profil : appliquer ou rétablir.
+- Vérification à l'ouverture de session, chaque jour ou à la demande, icône de notification avec le nombre d'actions en attente et bilan de la vérification.
+- Ligne de commande (`check`, `scan`, `install`, `update`, `revert`, `settings`, `profile`) avec résultat en JSON et code de sortie.
+- Mise à jour de UtilitiesManager proposée, jamais silencieuse, avec contrôle SHA-256.
+
 ## [0.0.11] - 2026-11-17
 
 ### Corrigé
