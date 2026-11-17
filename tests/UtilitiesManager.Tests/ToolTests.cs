@@ -118,6 +118,7 @@ public partial class ToolTests
         Assert.Equal(new CliCommand("check", Json: true), CliCommand.Parse([.. launcher, "check", "--json"], out _));
         Assert.Equal(new CliCommand("update", All: true), CliCommand.Parse(["update", "--all"], out _));
         Assert.Equal(new CliCommand("install", Target: "git"), CliCommand.Parse(["install", "git"], out _));
+        Assert.Equal(new CliCommand("scan"), CliCommand.Parse(["scan"], out _));
         Assert.Equal(new CliCommand("settings", "restore", "explorer"), CliCommand.Parse(["settings", "Restore", "explorer"], out _));
         Assert.Equal(new CliCommand("profile", "import", "p.json"), CliCommand.Parse(["profile", "import", "p.json"], out _));
 

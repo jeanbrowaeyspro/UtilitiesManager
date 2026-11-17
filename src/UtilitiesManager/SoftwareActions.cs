@@ -20,6 +20,16 @@ public sealed class SoftwareActions(AppServices services)
         return result;
     }
 
+    /// <summary>
+    /// Logiciels installés sur ce PC et absents du profil (winget, programmes inscrits dans Windows, dossier des
+    /// portables), y compris ceux à ne plus proposer : <see cref="AppSettings.IsIgnored"/> les distingue.
+    /// </summary>
+    public async Task<IReadOnlyList<FoundSoftware>> ScanAsync(Profile profile)
+    {
+        var winget = await services.Winget.ListAsync();
+        return await Task.Run(() => services.Inventory.Scan(profile, winget, services.Settings.PortableFolder));
+    }
+
     /// <summary>Téléchargements menés en même temps que les installations.</summary>
     private const int ParallelDownloads = 2;
 

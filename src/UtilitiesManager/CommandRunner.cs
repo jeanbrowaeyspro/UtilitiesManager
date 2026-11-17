@@ -48,6 +48,7 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
             return command.Verb switch
             {
                 "check" => await CheckAsync(),
+                "scan" => await ScanAsync(),
                 "install" or "update" => await InstallAsync(command),
                 "revert" => await RevertAsync(command.Target!),
                 "settings" => await SettingsAsync(command.Action == "apply", command.Target!),
@@ -97,6 +98,38 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
         if (result.WingetError is not null)
             return CliCommand.ExitFailed;
         return result.Programs.Any(p => p.NeedsAction) ? CliCommand.ExitPending : CliCommand.ExitOk;
+    }
+
+    /// <summary>
+    /// Logiciels de ce PC absents du profil, sans ceux à ne plus proposer ; paquet winget ou Store quand il est
+    /// connu (aucune recherche sur Internet).
+    /// </summary>
+    private async Task<int> ScanAsync()
+    {
+        if (await LoadProfileAsync() is not { } profile)
+            return CliCommand.ExitFailed;
+        var found = (await _actions.ScanAsync(profile)).Where(f => !services.Settings.IsIgnored(f)).ToList();
+        if (_json)
+        {
+            WriteJson(new JsonArray([.. found.Select(f => (JsonNode)new JsonObject
+            {
+                ["name"] = f.Name,
+                ["version"] = f.Version,
+                ["publisher"] = f.Publisher,
+                ["origin"] = JsonNamingPolicy.CamelCase.ConvertName(f.Origin.ToString()),
+                ["source"] = f.IsSure ? f.WingetSource : null,
+                ["package"] = f.IsSure ? f.WingetId : null,
+                ["path"] = f.Exe,
+            })]));
+            return CliCommand.ExitOk;
+        }
+        var rows = found.Select(f => new FoundRow(f)).ToList();
+        var name = rows.Select(r => r.Name.Length).DefaultIfEmpty(0).Max();
+        var version = rows.Select(r => r.Version.Length).DefaultIfEmpty(0).Max();
+        var origin = rows.Select(r => r.Origin.Length).DefaultIfEmpty(0).Max();
+        foreach (var row in rows)
+            output.WriteLine($"{row.Name.PadRight(name)}  {row.Version.PadRight(version)}  {row.Origin.PadRight(origin)}  {row.Source}".TrimEnd());
+        return CliCommand.ExitOk;
     }
 
     /// <summary><c>install</c> : logiciels absents de ce PC ; <c>update</c> : mises à jour disponibles.</summary>

@@ -1,11 +1,22 @@
 using System.IO.Compression;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace UtilitiesManager.Software;
 
 /// <summary>Dernière version d'un paquet Chocolatey et adresse de son <c>.nupkg</c>.</summary>
 public sealed record ChocolateyRelease(string Version, string PackageUrl);
+
+/// <summary>Paquet trouvé par une recherche. <see cref="Size"/> : taille du <c>.nupkg</c> en octets.</summary>
+public sealed record ChocolateyPackage(string Id, string Title, string Version, long Size)
+{
+    /// <summary>
+    /// Paquet qui embarque l'installeur (seul cas utilisable). Un paquet de quelques Ko ne contient qu'un script qui
+    /// télécharge l'installeur sur le site de l'éditeur.
+    /// </summary>
+    public bool EmbedsInstaller => Size > 1_000_000;
+}
 
 /// <summary>
 /// Paquets communautaires Chocolatey, qui embarquent les installeurs officiels (cas d'un éditeur qui interdit le
@@ -14,6 +25,7 @@ public sealed record ChocolateyRelease(string Version, string PackageUrl);
 public static class Chocolatey
 {
     private const string ApiUrl = "https://community.chocolatey.org/api/v2/package/";
+    private const string SearchUrl = "https://community.chocolatey.org/api/v2/Search()";
 
     private static readonly HttpClient NoRedirect = CreateClient(allowRedirect: false);
     private static readonly HttpClient Http = CreateClient(allowRedirect: true);
@@ -62,6 +74,31 @@ public static class Chocolatey
         throw new HttpRequestException(response.StatusCode == HttpStatusCode.TooManyRequests
             ? L.T("Chocolatey limits the number of requests, try again later.")
             : L.T("Unexpected answer from Chocolatey (HTTP {0}).", status), null, response.StatusCode);
+    }
+
+    /// <summary>Paquets dont le nom ou la description contient <paramref name="query"/> (dernières versions).</summary>
+    public static async Task<IReadOnlyList<ChocolateyPackage>> SearchAsync(string query, CancellationToken cancel = default)
+    {
+        using var timeout = Limit(cancel, TimeSpan.FromSeconds(30));
+        var term = Uri.EscapeDataString("'" + query.Replace("'", "''") + "'");
+        var url = $"{SearchUrl}?$filter=IsLatestVersion&$top=10&searchTerm={term}&targetFramework=''&includePrerelease=false";
+        return ParseSearch(await Http.GetStringAsync(url, timeout.Token));
+    }
+
+    /// <summary>Lecture du flux Atom de la recherche OData.</summary>
+    public static IReadOnlyList<ChocolateyPackage> ParseSearch(string xml)
+    {
+        XNamespace atom = "http://www.w3.org/2005/Atom";
+        XNamespace data = "http://schemas.microsoft.com/ado/2007/08/dataservices";
+        XNamespace meta = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata";
+        return XDocument.Parse(xml).Root!.Elements(atom + "entry").Select(entry =>
+        {
+            var properties = entry.Element(meta + "properties");
+            string? Read(string name) => properties?.Element(data + name)?.Value;
+            var id = entry.Element(atom + "title")?.Value ?? "";
+            return new ChocolateyPackage(id, Read("Title") is { Length: > 0 } title ? title : id, Read("Version") ?? "",
+                                         long.TryParse(Read("PackageSize"), out var size) ? size : 0);
+        }).Where(p => p.Id.Length > 0).ToList();
     }
 
     public static async Task DownloadAsync(ChocolateyRelease release, string destination, CancellationToken cancel = default)

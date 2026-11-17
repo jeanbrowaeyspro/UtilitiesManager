@@ -62,7 +62,8 @@ public sealed class GitHubAccount
     /// </summary>
     public GitHubRepositoryClient CreateClient(string repository) => _clientFor(repository, TokenAsync);
 
-    private async ValueTask<string> TokenAsync(CancellationToken cancellation)
+    /// <summary>Jeton du compte, renouvelé s'il a expiré ; vide si déconnecté.</summary>
+    public async ValueTask<string> TokenAsync(CancellationToken cancellation)
     {
         await EnsureFreshAsync(cancellation).ConfigureAwait(false);
         return _credential?.AccessToken ?? string.Empty;

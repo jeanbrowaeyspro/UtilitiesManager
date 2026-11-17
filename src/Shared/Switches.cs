@@ -22,7 +22,7 @@ internal static class Switches
     /// Commandes du pilotage en ligne de commande (premier argument) : l'application les exécute sans fenêtre et
     /// le lanceur attend sa fin pour rendre son code de sortie.
     /// </summary>
-    public static readonly string[] Commands = { "check", "install", "update", "revert", "settings", "profile", "help" };
+    public static readonly string[] Commands = { "check", "scan", "install", "update", "revert", "settings", "profile", "help" };
 
     /// <summary>Vrai si <paramref name="first"/> (premier argument utile) est une commande.</summary>
     public static bool IsCommand(string? first) =>

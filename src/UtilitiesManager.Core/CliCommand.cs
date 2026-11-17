@@ -51,7 +51,7 @@ public sealed record CliCommand(string Verb, string? Action = null, string? Targ
         var rest = words.Skip(1).ToList();
         CliCommand? command = verb switch
         {
-            "check" or "help" when rest.Count == 0 && !all => new CliCommand(verb),
+            "check" or "scan" or "help" when rest.Count == 0 && !all => new CliCommand(verb),
             "install" or "update" when rest.Count == 1 ^ all && rest.Count <= 1 => new CliCommand(verb, Target: rest.FirstOrDefault(), All: all),
             "revert" when rest.Count == 1 && !all => new CliCommand(verb, Target: rest[0]),
             "settings" when rest.Count == 2 && !all && rest[0].ToLowerInvariant() is "apply" or "restore" =>
@@ -71,5 +71,5 @@ public sealed record CliCommand(string Verb, string? Action = null, string? Targ
     }
 
     /// <summary>Aide de la ligne de commande.</summary>
-    public static string Usage => L.T("Usage: UtilitiesManager.exe <command> [--json]\n\n  check                    Check the software of the profile and the Windows settings\n  install <id> | --all     Install a software of the profile missing on this PC (or all of them)\n  update <id> | --all      Install an available update (or all of them)\n  revert <id>              Go back to the previous version kept on this PC\n  settings apply <id>      Apply a Windows setting of the profile\n  settings restore <id>    Restore a Windows setting\n  profile import <file>    Import a profile file (local copy)\n  profile sync             Read the profile again from GitHub\n  help                     This help\n\n  --json                   Result in JSON on the standard output (progress on the error output)\n\nExit code: 0 done, 1 failure, 2 incorrect command line, 3 actions waiting, 4 another operation in progress.");
+    public static string Usage => L.T("Usage: UtilitiesManager.exe <command> [--json]\n\n  check                    Check the software of the profile and the Windows settings\n  scan                     List the software of this PC that is not in the profile\n  install <id> | --all     Install a software of the profile missing on this PC (or all of them)\n  update <id> | --all      Install an available update (or all of them)\n  revert <id>              Go back to the previous version kept on this PC\n  settings apply <id>      Apply a Windows setting of the profile\n  settings restore <id>    Restore a Windows setting\n  profile import <file>    Import a profile file (local copy)\n  profile sync             Read the profile again from GitHub\n  help                     This help\n\n  --json                   Result in JSON on the standard output (progress on the error output)\n\nExit code: 0 done, 1 failure, 2 incorrect command line, 3 actions waiting, 4 another operation in progress.");
 }

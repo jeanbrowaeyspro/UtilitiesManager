@@ -30,10 +30,16 @@ public sealed class AppSettings
     public DateTimeOffset? LastCheck { get; set; }
     /// <summary>Logiciels retirés du profil dont la désinstallation a été refusée sur ce poste.</summary>
     public List<string> DeclinedUninstalls { get; set; } = [];
+    /// <summary>Logiciels du relevé à ne plus proposer sur ce poste (<see cref="Software.FoundSoftware.Key"/>).</summary>
+    public List<string> IgnoredSoftware { get; set; } = [];
+    /// <summary>Dossier des logiciels portables parcouru par le relevé.</summary>
+    public string PortableFolder { get; set; } = @"C:\Logiciels";
     /// <summary>Dernière version lancée : nouveautés proposées après une mise à jour.</summary>
     public string? LastSeenVersion { get; set; }
     /// <summary>Position, taille et état de la fenêtre principale à sa dernière fermeture.</summary>
     public WindowPlacement? MainWindow { get; set; }
+
+    public bool IsIgnored(Software.FoundSoftware found) => IgnoredSoftware.Contains(found.Key);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

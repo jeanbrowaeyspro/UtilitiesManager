@@ -30,6 +30,8 @@ public sealed class AppServices
         Installer = new InstallService(Winget, Detector, Latest, shell, new Integrity(new AuthenticodeVerifier()), Runner,
                                        new AppProcesses(Runner), new VersionCache(paths.CacheDir), Profiles, github, State);
         Tweaks = new WindowsTweaks(registry);
+        Inventory = new Inventory(registry);
+        SourceFinder = new SourceFinder(Winget, new GitHubSearchClient(Account.TokenAsync, UserAgent), github);
         Setup = new Setup(paths, registry, new ShellLinkWriter());
         SelfUpdate = new SelfUpdate(paths.InstalledLauncher);
     }
@@ -48,6 +50,8 @@ public sealed class AppServices
     public CheckEngine Checker { get; }
     public InstallService Installer { get; }
     public WindowsTweaks Tweaks { get; }
+    public Inventory Inventory { get; }
+    public SourceFinder SourceFinder { get; }
     public Setup Setup { get; }
     public SelfUpdate SelfUpdate { get; }
 
