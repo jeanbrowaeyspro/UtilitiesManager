@@ -1,5 +1,11 @@
 # Nouveautés
 
+## [0.0.10] - 2026-11-17
+
+### Corrigé
+- Un logiciel absent qui ne sert que de dépendance (ex. Outil de déploiement Office pour Microsoft 365) n'est plus compté en attente : il est indiqué "Installé au besoin avec ..." et s'installe avec le logiciel qui en dépend. Il reste installable seul en le cochant.
+- Quand winget ne trouve plus l'installeur chez l'éditeur (paquet winget pas encore mis à jour), le message le dit clairement au lieu d'afficher un code d'erreur seul.
+
 ## [0.0.9] - 2026-11-17
 
 ### Ajouté
@@ -9,7 +15,6 @@
 
 ### Corrigé
 - Avec plusieurs écrans à des mises à l'échelle différentes, la fenêtre se rouvre sur son écran, même agrandie (elle pouvait se rouvrir sur l'écran principal).
-- Un logiciel absent qui ne sert que de dépendance (ex. Outil de déploiement Office pour Microsoft 365) n'est plus compté en attente : il est indiqué "Installé au besoin avec ..." et s'installe avec le logiciel qui en dépend. Il reste installable seul en le cochant.
 
 ## [0.0.8] - 2026-11-17
 
