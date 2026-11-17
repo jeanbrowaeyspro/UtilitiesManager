@@ -206,7 +206,7 @@ public sealed class CommandRunner(AppServices services, TextWriter output, TextW
             return Fail(L.T("{0} is not in the profile.", id));
         try
         {
-            _actions.ChangeTweaks([tweak], apply, Progress);
+            await _actions.ChangeTweaksAsync([tweak], apply, Progress);
         }
         catch (Exception exc) when (SoftwareActions.IsTweakFailure(exc))
         {

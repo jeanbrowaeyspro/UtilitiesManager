@@ -347,7 +347,7 @@ public sealed class MainWindow : ThemedWindow
             _controller.Dialogs.Info(L.T("Tick the settings to change."));
             return;
         }
-        _controller.ChangeTweaks(chosen, apply);
+        _ = _controller.ChangeTweaksAsync(chosen, apply);
     }
 
     // ---- Paramètres ------------------------------------------------------------------------------------------

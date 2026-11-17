@@ -224,14 +224,11 @@ public sealed class SoftwareActions(AppServices services)
     /// Applique ou rétablit les réglages ; redémarre l'Explorateur si l'un d'eux le demande. Lève l'exception
     /// d'accès au registre en cas d'échec.
     /// </summary>
-    public void ChangeTweaks(IReadOnlyList<TweakEntry> tweaks, bool apply, Action<string, double?> report)
+    public async Task ChangeTweaksAsync(IReadOnlyList<TweakEntry> tweaks, bool apply, Action<string, double?> report)
     {
         foreach (var tweak in tweaks)
         {
-            if (apply)
-                services.Tweaks.Apply(tweak);
-            else
-                services.Tweaks.Restore(tweak);
+            await (apply ? services.Tweaks.ApplyAsync(tweak) : services.Tweaks.RestoreAsync(tweak));
             report(L.T("{0}: {1}", tweak.Name, apply ? L.T("applied") : L.T("restored")), null);
         }
         if (tweaks.Any(t => t.RestartExplorer))

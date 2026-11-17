@@ -577,11 +577,11 @@ public sealed class AppController
     }
 
     /// <summary>Applique ou rétablit les réglages choisis ; redémarre l'Explorateur si l'un d'eux le demande.</summary>
-    public void ChangeTweaks(IReadOnlyList<TweakEntry> tweaks, bool apply)
+    public async Task ChangeTweaksAsync(IReadOnlyList<TweakEntry> tweaks, bool apply)
     {
         try
         {
-            _actions.ChangeTweaks(tweaks, apply, Report);
+            await _actions.ChangeTweaksAsync(tweaks, apply, Report);
         }
         catch (Exception exc) when (SoftwareActions.IsTweakFailure(exc))
         {

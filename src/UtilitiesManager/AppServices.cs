@@ -29,7 +29,7 @@ public sealed class AppServices
         Checker = new CheckEngine(Winget, Detector, Latest, shell);
         Installer = new InstallService(Winget, Detector, Latest, shell, new Integrity(new AuthenticodeVerifier()), Runner,
                                        new AppProcesses(Runner), new VersionCache(paths.CacheDir), Profiles, github, State);
-        Tweaks = new WindowsTweaks(registry);
+        Tweaks = new WindowsTweaks(registry, command => shell.RunElevatedAsync(command));
         Inventory = new Inventory(registry);
         SourceFinder = new SourceFinder(Winget, new GitHubSearchClient(Account.TokenAsync, UserAgent), github);
         Setup = new Setup(paths, registry, new ShellLinkWriter());

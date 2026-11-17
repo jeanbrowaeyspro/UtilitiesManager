@@ -251,7 +251,7 @@ public class SoftwareTests
     }
 
     [Fact]
-    public void WindowsSettingIsAppliedRestoredAndCapturedFromTheCatalog()
+    public async Task WindowsSettingIsAppliedRestoredAndCapturedFromTheCatalog()
     {
         var registry = new FakeRegistry();
         var tweaks = new WindowsTweaks(registry);
@@ -268,11 +268,11 @@ public class SoftwareTests
         };
 
         Assert.False(tweaks.IsApplied(tweak));
-        tweaks.Apply(tweak);
+        await tweaks.ApplyAsync(tweak);
         Assert.True(tweaks.IsApplied(tweak));
         Assert.Equal(0, registry.GetValue(RegistryRoot.CurrentUser, @"Software\Outil", "Recherche"));
 
-        tweaks.Restore(tweak);
+        await tweaks.RestoreAsync(tweak);
         Assert.False(tweaks.IsApplied(tweak));
         Assert.False(registry.HasKey(RegistryRoot.CurrentUser, $@"{clsid}\InprocServer32"));
         Assert.Equal(1, registry.GetValue(RegistryRoot.CurrentUser, @"Software\Outil", "Recherche"));
@@ -280,7 +280,42 @@ public class SoftwareTests
         // Catalogue (traductions contrôlées avec les autres textes) : valide, seuls les réglages posés sont relevés.
         var catalog = TweakCatalog.Load();
         Assert.Empty(ProfileValidator.Validate(new Profile { Tweaks = catalog }));
-        tweaks.Apply(catalog.Single(c => c.Id == "dark-theme"));
+        await tweaks.ApplyAsync(catalog.Single(c => c.Id == "dark-theme"));
         Assert.Equal(["dark-theme"], catalog.Where(tweaks.IsApplied).Select(c => c.Id));
+    }
+
+    [Fact]
+    public async Task ProtectedValuesAreSkippedAndMachineValuesWrittenAsAdministrator()
+    {
+        var registry = new FakeRegistry { LocalMachineReadOnly = true };
+        var commands = new List<string>();
+        var tweaks = new WindowsTweaks(registry, command =>
+        {
+            commands.Add(command);
+            return Task.FromResult(0);
+        });
+        const string advanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+        // Ancien profil : TaskbarDa, protégée par Windows, remplacée par la stratégie du catalogue.
+        var tweak = new TweakEntry
+        {
+            Id = "taskbar-left", Name = "Barre",
+            Values = [new RegistrySetting { Key = $@"HKCU\{advanced}", Name = "TaskbarDa", Type = "dword", Value = "0" }],
+        };
+        registry.SetDword(RegistryRoot.CurrentUser, advanced, "TaskbarAl", 0);
+
+        await tweaks.ApplyAsync(tweak);
+
+        Assert.Null(registry.GetValue(RegistryRoot.CurrentUser, advanced, "TaskbarDa"));
+        Assert.Equal(0, registry.GetValue(RegistryRoot.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Search", "SearchboxTaskbarMode"));
+        Assert.Equal([@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Dsh"" /v ""AllowNewsAndInterests"" /t REG_DWORD /d ""0"" /f /reg:64"], commands);
+
+        // Valeur HKLM absente : rien à rétablir, aucune invite.
+        commands.Clear();
+        await tweaks.RestoreAsync(tweak);
+        Assert.Empty(commands);
+
+        // UAC refusée : échec signalé.
+        var refused = new WindowsTweaks(registry, _ => Task.FromResult(1223));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => refused.ApplyAsync(tweak));
     }
 }

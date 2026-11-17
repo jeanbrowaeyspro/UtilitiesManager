@@ -157,6 +157,9 @@ internal static class FrenchCatalog
         ["not applied"] = "non appliqué",
         ["restored"] = "rétabli",
         ["The setting could not be changed:\n\n{0}"] = "Le réglage n'a pas pu être modifié :\n\n{0}",
+        ["Administrator rights are needed."] = "Les droits administrateur sont nécessaires.",
+        ["Administrator rights refused."] = "Droits administrateur refusés.",
+        ["The command run as administrator failed (code {0})."] = "La commande lancée en administrateur a échoué (code {0}).",
         ["The profile contains no Windows setting."] = "Le profil ne contient aucun réglage Windows.",
         ["Tick the settings to change."] = "Cocher les réglages à modifier.",
 

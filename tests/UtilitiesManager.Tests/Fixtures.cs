@@ -83,8 +83,13 @@ public sealed class FakeRegistry : IRegistryStore
 
     public bool HasKey(RegistryRoot root, string path) => _keys.ContainsKey(Id(root, path));
 
+    /// <summary>Écriture dans HKLM refusée, comme sans les droits administrateur.</summary>
+    public bool LocalMachineReadOnly { get; init; }
+
     private void Set(RegistryRoot root, string path, string name, object value)
     {
+        if (LocalMachineReadOnly && root != RegistryRoot.CurrentUser)
+            throw new UnauthorizedAccessException("HKLM");
         if (!_keys.TryGetValue(Id(root, path), out var values))
             _keys[Id(root, path)] = values = [];
         values[name] = value;
