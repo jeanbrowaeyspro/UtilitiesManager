@@ -1,5 +1,10 @@
 # Nouveautés
 
+## [0.0.7] - 2026-11-17
+
+### Corrigé
+- Connexion GitHub renouvelée d'elle-même quand elle expire (au bout de 8 heures) : le profil n'est plus déclaré injoignable avec "Jeton GitHub refusé ou expiré (401)".
+
 ## [0.0.6] - 2026-11-17
 
 ### Ajouté
