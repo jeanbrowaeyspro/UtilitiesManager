@@ -1,5 +1,11 @@
 # Nouveautés
 
+## [0.0.6] - 2026-11-17
+
+### Ajouté
+- Tableau des logiciels suivi pendant les installations : "En attente", "En cours", "En pause", "À jour" (avec la nouvelle version), "Échec" ou "Non traité" après un arrêt.
+- Une mise à jour ne remet plus d'icône sur le Bureau : les icônes ajoutées par l'installeur sont retirées juste après la mise à jour de chaque logiciel. Une première installation garde son icône.
+
 ## [0.0.5] - 2026-11-16
 
 ### Ajouté
