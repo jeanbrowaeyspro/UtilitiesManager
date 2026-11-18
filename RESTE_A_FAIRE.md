@@ -12,8 +12,6 @@
 
 - Signataires de Npcap et d'iVMS-4200 à relever sur un installeur téléchargé, puis `verify: signature` et `signer`
   dans le profil (aujourd'hui sans contrôle de signature, installeurs ouverts pour Jean).
-- Retouches de fichiers `.ini` (`ini` du profil, cas Greenshot) : non modifiables dans l'éditeur de l'outil,
-  seulement dans le fichier du profil.
 
 ## À confirmer
 

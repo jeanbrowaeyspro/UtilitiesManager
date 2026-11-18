@@ -53,6 +53,8 @@ public static partial class ProfileValidator
                 errors.Add(L.T("{0}: negative minimum age.", name));
             CheckSource(program, name, errors);
             CheckPatterns(program, name, errors);
+            if (program.Ini?.Any(i => string.IsNullOrWhiteSpace(i.File) || string.IsNullOrWhiteSpace(i.Section) || string.IsNullOrWhiteSpace(i.Key)) == true)
+                errors.Add(L.T("{0}: .ini setting without file, section or key.", name));
         }
         foreach (var program in profile.Programs.Where(p => p.DependsOn is not null))
         {
@@ -66,6 +68,8 @@ public static partial class ProfileValidator
             var name = string.IsNullOrWhiteSpace(tweak.Id) ? "?" : tweak.Id;
             if (!IdPattern().IsMatch(tweak.Id) || !tweakIds.Add(tweak.Id))
                 errors.Add(L.T("{0}: invalid or duplicate identifier.", name));
+            if (string.IsNullOrWhiteSpace(tweak.Name))
+                errors.Add(L.T("{0}: name missing.", name));
             if (tweak.Values.Count == 0)
                 errors.Add(L.T("{0}: no registry value.", name));
             foreach (var value in tweak.Values)

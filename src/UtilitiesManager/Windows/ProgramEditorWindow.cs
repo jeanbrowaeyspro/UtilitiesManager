@@ -7,7 +7,7 @@ using S = UtilitiesManager.Profiles.Sources;
 namespace UtilitiesManager;
 
 /// <summary>
-/// Définition d'un logiciel du profil : options (mode, âge minimum, version bloquée) et champs de sa source, seuls
+/// Définition d'un logiciel du profil : options (mode, âge minimum, version bloquée), champs de sa source, seuls
 /// ceux de la source choisie étant affichés. Enregistrer contrôle le profil et teste la détection et la dernière
 /// version : rien n'est enregistré si le test échoue.
 /// </summary>
@@ -105,6 +105,15 @@ public sealed class ProgramEditorWindow : ThemedWindow
         Text(form, L.T("Command"), [S.Zip, S.Download, S.Command], e => e.Latest?.Command, (e, v) => Latest(e).Command = v);
         Text(form, L.T("Version pattern"), [S.Zip, S.Download, S.Command], e => e.Latest?.Regex, (e, v) => Latest(e).Regex = v);
 
+        Section(form, L.T(".ini settings after installation"));
+        var ini = new EditableTable<IniSetting>();
+        ini.Text(L.T("File"), nameof(IniSetting.File), 220);
+        ini.Text(L.T("Section"), nameof(IniSetting.Section), 120);
+        ini.Text(L.T("Key"), nameof(IniSetting.Key), 120);
+        ini.Text(L.T("Value"), nameof(IniSetting.Value));
+        form.Children.Add(ini.View);
+        _fields.Add(new Field(ini.View, All, e => ini.Show(e.Ini), e => e.Ini = ini.Read() is { Count: > 0 } rows ? rows : null));
+
         Entry = entry;
         Load(entry);
 
@@ -180,7 +189,7 @@ public sealed class ProgramEditorWindow : ThemedWindow
     /// <summary>Entrée lue du formulaire ; les champs masqués (autre source) ne sont pas gardés.</summary>
     private ProgramEntry Read()
     {
-        var entry = new ProgramEntry { Ini = Entry.Ini };
+        var entry = new ProgramEntry();
         foreach (var field in _fields.Where(f => f.Sources.Contains(_source)))
             field.Store(entry);
         entry.Source = _source;

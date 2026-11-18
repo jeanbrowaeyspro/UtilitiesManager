@@ -15,16 +15,8 @@ namespace UtilitiesManager;
 public sealed class MainWindow : ThemedWindow
 {
     private readonly AppController _controller;
-    private readonly DataGrid _programs = new()
-    {
-        AutoGenerateColumns = false,
-        CanUserAddRows = false,
-        CanUserDeleteRows = false,
-        SelectionMode = DataGridSelectionMode.Single,
-        HeadersVisibility = DataGridHeadersVisibility.Column,
-        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-    };
-    private readonly StackPanel _tweaks = new();
+    private readonly DataGrid _programs = Table();
+    private readonly DataGrid _tweaks = Table();
     private readonly StackPanel _settings = new() { Margin = new Thickness(20, 16, 20, 16) };
     private readonly TextBlock _status = Ui.Muted("");
     private readonly ProgressBar _progress = new() { Height = 4, Maximum = 1, Margin = new Thickness(0, 8, 0, 8) };
@@ -140,15 +132,26 @@ public sealed class MainWindow : ThemedWindow
 
     // ---- Logiciels -------------------------------------------------------------------------------------------
 
+    /// <summary>Tableau en lecture seule à une ligne choisie (onglets Logiciels et Réglages Windows).</summary>
+    private static DataGrid Table() => new()
+    {
+        AutoGenerateColumns = false,
+        CanUserAddRows = false,
+        CanUserDeleteRows = false,
+        SelectionMode = DataGridSelectionMode.Single,
+        HeadersVisibility = DataGridHeadersVisibility.Column,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+    };
+
     private FrameworkElement BuildProgramsTab()
     {
         _programs.Columns.Add(Ui.CheckColumn(nameof(ProgramRow.Selected)));
-        Column(L.T("Software"), nameof(ProgramRow.Name), 220);
-        Column(L.T("Source"), nameof(ProgramRow.Source), 100);
-        Column(L.T("Installed"), nameof(ProgramRow.Installed), 130);
-        Column(L.T("Available"), nameof(ProgramRow.Available), 130);
-        Column(L.T("Mode"), nameof(ProgramRow.Mode), 150);
-        Column(L.T("State"), nameof(ProgramRow.State), double.NaN);
+        Column(_programs, L.T("Software"), nameof(ProgramRow.Name), 220);
+        Column(_programs, L.T("Source"), nameof(ProgramRow.Source), 100);
+        Column(_programs, L.T("Installed"), nameof(ProgramRow.Installed), 130);
+        Column(_programs, L.T("Available"), nameof(ProgramRow.Available), 130);
+        Column(_programs, L.T("Mode"), nameof(ProgramRow.Mode), 150);
+        Column(_programs, L.T("State"), nameof(ProgramRow.State), double.NaN);
         _programs.SelectionChanged += (_, _) => UpdateButtons();
         _programs.MouseDoubleClick += (_, _) => _ = EditAsync();
 
@@ -188,8 +191,8 @@ public sealed class MainWindow : ThemedWindow
         Setters = { new Setter(VerticalAlignmentProperty, VerticalAlignment.Center) },
     };
 
-    private void Column(string header, string property, double width) =>
-        _programs.Columns.Add(new DataGridTextColumn
+    private static void Column(DataGrid grid, string header, string property, double width) =>
+        grid.Columns.Add(new DataGridTextColumn
         {
             Header = header,
             Binding = new Binding(property),
@@ -313,41 +316,80 @@ public sealed class MainWindow : ThemedWindow
 
     private FrameworkElement BuildTweaksTab()
     {
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
+        _tweaks.Columns.Add(Ui.CheckColumn(nameof(TweakRow.Selected)));
+        Column(_tweaks, L.T("Setting"), nameof(TweakRow.Name), 420);
+        Column(_tweaks, L.T("State"), nameof(TweakRow.State), double.NaN);
+        _tweaks.MouseDoubleClick += (_, _) => _ = EditTweakAsync(isNew: false);
+
+        var buttons = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
         buttons.Children.Add(Action(L.T("Apply"), () => ChangeTweaks(apply: true)));
         buttons.Children.Add(Action(L.T("Restore"), () => ChangeTweaks(apply: false)));
-        buttons.Children.Add(Action(L.T("Capture from this PC"), () => _ = _controller.CaptureTweaksAsync()));
-        var panel = new DockPanel { Margin = new Thickness(20, 16, 20, 10) };
+        buttons.Children.Add(Action(L.T("Capture from this PC"), () => _ = _controller.CaptureTweaksAsync(), 160));
+        buttons.Children.Add(Action(L.T("Add…"), () => _ = EditTweakAsync(isNew: true)));
+        buttons.Children.Add(Action(L.T("Change…"), () => _ = EditTweakAsync(isNew: false)));
+        buttons.Children.Add(Action(L.T("Remove from profile"), () => _ = RemoveTweakAsync(), 160));
+        var panel = new DockPanel { Margin = new Thickness(0, 10, 0, 10) };
         DockPanel.SetDock(buttons, Dock.Bottom);
         panel.Children.Add(buttons);
-        panel.Children.Add(new ScrollViewer { Content = _tweaks, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        panel.Children.Add(_tweaks);
         return panel;
     }
 
+    private TweakRow? CurrentTweak => _tweaks.SelectedItem as TweakRow;
+
     private void BuildTweaks()
     {
-        _tweaks.Children.Clear();
-        var tweaks = _controller.Profile?.Tweaks ?? [];
-        if (tweaks.Count == 0)
-            _tweaks.Children.Add(Ui.Muted(L.T("The profile contains no Windows setting.")));
-        foreach (var tweak in tweaks)
-        {
-            var row = new TweakRow(tweak, _controller.IsApplied(tweak));
-            var box = Ui.Check(row.Text, false, value => row.Selected = value);
-            box.Tag = row;
-            _tweaks.Children.Add(box);
-        }
+        var selected = CurrentTweak?.Tweak.Id;
+        var rows = (_controller.Profile?.Tweaks ?? []).Select(t => new TweakRow(t, _controller.IsApplied(t))).ToList();
+        _tweaks.ItemsSource = rows;
+        _tweaks.SelectedItem = rows.FirstOrDefault(r => r.Tweak.Id == selected);
     }
 
     private void ChangeTweaks(bool apply)
     {
-        var chosen = _tweaks.Children.OfType<CheckBox>().Select(b => b.Tag).OfType<TweakRow>().Where(r => r.Selected).Select(r => r.Tweak).ToList();
+        var chosen = (_tweaks.ItemsSource as IEnumerable<TweakRow> ?? []).Where(r => r.Selected).Select(r => r.Tweak).ToList();
         if (chosen.Count == 0)
         {
             _controller.Dialogs.Info(L.T("Tick the settings to change."));
             return;
         }
         _ = _controller.ChangeTweaksAsync(chosen, apply);
+    }
+
+    /// <summary>Éditeur du réglage choisi (ou d'un nouveau) puis enregistrement dans le profil.</summary>
+    private async Task EditTweakAsync(bool isNew)
+    {
+        if (_controller.Profile is not { } profile || _controller.Busy)
+            return;
+        TweakEntry tweak;
+        if (isNew)
+            tweak = new TweakEntry();
+        else if (CurrentTweak is { } row)
+            tweak = row.Tweak;
+        else
+            return;
+        var editor = new TweakEditorWindow(profile, tweak, isNew) { Owner = this };
+        if (editor.ShowDialog() != true)
+            return;
+        var saved = editor.Tweak;
+        await _controller.EditProfileAsync(changed =>
+        {
+            var index = changed.Tweaks.FindIndex(t => t.Id == tweak.Id);
+            if (index >= 0 && !isNew)
+                changed.Tweaks[index] = saved;
+            else
+                changed.Tweaks.Add(saved);
+        }, isNew ? $"Ajout du réglage {saved.Name}" : $"Modification du réglage {saved.Name}");
+    }
+
+    private async Task RemoveTweakAsync()
+    {
+        if (CurrentTweak is not { } row || _controller.Busy)
+            return;
+        if (!_controller.Dialogs.Confirm(L.T("Remove {0} from the profile?\n\nThe setting stays as it is on each PC: restore it first if needed.", row.Name),
+                                         L.T("Remove"), L.T("Cancel")))
+            return;
+        await _controller.EditProfileAsync(changed => changed.Tweaks.RemoveAll(t => t.Id == row.Tweak.Id), $"Retrait du réglage {row.Name}");
     }
 
     // ---- Paramètres ------------------------------------------------------------------------------------------
@@ -392,6 +434,7 @@ public sealed class MainWindow : ThemedWindow
         _settings.Children.Add(Ui.Check(L.T("Desktop shortcut"), settings.DesktopShortcut, v => Save(() => settings.DesktopShortcut = v)));
         _settings.Children.Add(Ui.Check(L.T("Start menu shortcut"), settings.StartMenuShortcut, v => Save(() => settings.StartMenuShortcut = v)));
         _settings.Children.Add(Ui.Row(L.T("Portable software folder"), Ui.TextButton(settings.PortableFolder, ChoosePortableFolder)));
+        _settings.Children.Add(Ui.Row(L.T("Declined uninstalls"), DeclinedUninstalls(settings)));
 
         _settings.Children.Add(Section(L.T("UtilitiesManager updates")));
         _settings.Children.Add(Ui.Check(L.T("Show the release notes"), settings.ShowReleaseNotes, v => Save(() => settings.ShowReleaseNotes = v)));
@@ -402,6 +445,31 @@ public sealed class MainWindow : ThemedWindow
                                                                settings.Theme, _controller.SetTheme)));
         _settings.Children.Add(Ui.Row(L.T("Language"), Ui.Choices([(L.System, L.T("System")), (L.French, "Français"), (L.English, "English")],
                                                                   settings.Language, language => Dispatcher.BeginInvoke(() => _controller.SetLanguage(language)))));
+    }
+
+    /// <summary>
+    /// Logiciels retirés du profil dont la désinstallation a été refusée sur ce PC : vider la liste les fait
+    /// proposer de nouveau à la vérification lancée aussitôt.
+    /// </summary>
+    private FrameworkElement DeclinedUninstalls(AppSettings settings)
+    {
+        if (settings.DeclinedUninstalls.Count == 0)
+            return Ui.Muted(L.T("None"));
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(new TextBlock
+        {
+            Text = string.Join(", ", settings.DeclinedUninstalls),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 12, 0),
+        });
+        panel.Children.Add(Ui.TextButton(L.T("Offer again"), () =>
+        {
+            Save(settings.DeclinedUninstalls.Clear);
+            BuildSettings();
+            _ = _controller.CheckAsync(manual: true);
+        }));
+        return panel;
     }
 
     /// <summary>Dossier des logiciels portables parcouru par le relevé.</summary>

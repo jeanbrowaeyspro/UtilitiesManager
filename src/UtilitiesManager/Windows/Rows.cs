@@ -79,7 +79,9 @@ public sealed class TweakRow(TweakEntry tweak, bool applied) : ObservableObject
         set => Set(ref _selected, value);
     }
 
-    public string Text => $"{Tweak.Name} ({(Applied ? L.T("applied") : L.T("not applied"))})";
+    public string Name => Tweak.Name;
+    public string State => Applied ? L.T("applied") : L.T("not applied");
+    public string Text => $"{Name} ({State})";
 }
 
 /// <summary>Ligne du relevé des logiciels de ce PC (fenêtre et commande <c>scan</c>).</summary>
