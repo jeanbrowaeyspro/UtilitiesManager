@@ -197,12 +197,44 @@ public sealed class AppController
             Dialogs.Error(L.T("The profile could not be saved:\n\n{0}", exc.Message));
             return false;
         }
+        var modesOnly = Last is not null && WithoutModes(Profile) == WithoutModes(changed);
         Profile = changed;
         // Enregistré là où il doit l'être : le bandeau ne parle plus de copie locale ni de dépôt manquant.
         ProfileOrigin = SavedOrigin();
         ProfileRepositoryMissing = false;
-        await CheckAsync(manual: true);
+        if (modesOnly)
+            await ApplyModesAsync(changed);
+        else
+            await CheckAsync(manual: true);
         return true;
+    }
+
+    /// <summary>Profil sans aucun mode : deux profils égaux ainsi ne diffèrent que par les modes.</summary>
+    private static string WithoutModes(Profile profile)
+    {
+        var copy = profile.Clone();
+        copy.Defaults.Mode = "";
+        copy.Programs.ForEach(p => p.Mode = null);
+        return copy.ToJson();
+    }
+
+    /// <summary>
+    /// Changement de mode seul : la vérification précédente reste valable, la liste prend les nouveaux modes et
+    /// les mises à jour déjà connues des logiciels passés en automatique sont installées.
+    /// </summary>
+    private async Task ApplyModesAsync(Profile profile)
+    {
+        if (Last is not { } last)
+            return;
+        Last = last with
+        {
+            Programs = last.Programs.Select(s => profile.Find(s.Program.Id) is { } entry ? s with { Program = entry } : s).ToList(),
+        };
+        StateChanged?.Invoke();
+        _tray?.SetPending(PendingCount);
+        var auto = Last.AutoUpdates(profile.Defaults).ToList();
+        if (auto.Count > 0)
+            await InstallAsync(auto);
     }
 
     public async Task ImportProfileAsync(string file)
