@@ -378,6 +378,9 @@ public sealed class MainWindow : ThemedWindow
         _settings.Children.Add(Ui.Row(L.T("Profile file"), Ui.TextButton(L.T("Import…"), () => _ = ImportAsync())));
         if (_controller.Profile is { } profile)
         {
+            var mode = Ui.Choices(Texts.ModeChoices, profile.Defaults.Mode,
+                                  value => _ = _controller.EditProfileAsync(p => p.Defaults.Mode = value, "Mode par défaut"));
+            _settings.Children.Add(Ui.Row(L.T("Default mode"), mode));
             var minAge = Ui.Choices(Texts.MinAgeChoices(profile.Defaults.MinAgeDays), profile.Defaults.MinAgeDays,
                                     days => _ = _controller.EditProfileAsync(p => p.Defaults.MinAgeDays = days, "Âge minimum par défaut"));
             _settings.Children.Add(Ui.Row(L.T("Default minimum age"), minAge));

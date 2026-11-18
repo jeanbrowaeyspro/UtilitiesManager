@@ -258,6 +258,7 @@ internal static class FrenchCatalog
         ["Import…"] = "Importer…",
         ["Import a profile"] = "Importer un profil",
         ["Profile (*.json)|*.json"] = "Profil (*.json)|*.json",
+        ["Default mode"] = "Mode par défaut",
         ["Default minimum age"] = "Âge minimum par défaut",
         ["This PC"] = "Ce PC",
         ["Start with Windows and check at each session"] = "Démarrer avec Windows et vérifier à chaque session",
