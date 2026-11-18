@@ -1,5 +1,10 @@
 # Nouveautés
 
+## [1.0.1] - 2026-11-18
+
+### Modifié
+- Changer seulement le mode d'un logiciel (automatique ou avec confirmation) ne relance plus de vérification : la liste prend le nouveau mode tout de suite et, pour un logiciel passé en automatique, la mise à jour déjà connue est installée.
+
 ## [1.0.0] - 2026-11-17
 
 Première version stable, qui reprend toutes les versions d'essai 0.0.1 à 0.0.11.
