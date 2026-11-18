@@ -1,5 +1,13 @@
 # Nouveautés
 
+## [1.0.2] - 2026-11-18
+
+### Ajouté
+- Onglet Paramètres : mode par défaut du profil (automatique ou avec confirmation), suivi par chaque logiciel laissé sur "Défaut du profil".
+- Onglet Réglages Windows : tableau des réglages, boutons "Ajouter…", "Modifier…" (ou double-clic) et "Retirer du profil". La fenêtre d'un réglage donne son nom, le redémarrage de l'Explorateur et les valeurs du registre posées et rétablies.
+- Fenêtre d'un logiciel : retouches de fichiers .ini posées après l'installation (fichier, section, clé, valeur).
+- Onglet Paramètres : désinstallations refusées sur ce PC, avec "Proposer de nouveau".
+
 ## [1.0.1] - 2026-11-18
 
 ### Modifié
