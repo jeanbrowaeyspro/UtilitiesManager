@@ -6,7 +6,10 @@
     "values": [
       { "key": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\\InprocServer32",
         "name": "", "type": "string", "value": "",
-        "restore_delete_key": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" }
+        "restore_delete_key": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" },
+      { "key": "HKCU\\Software\\Classes\\CLSID\\{51668040-5e31-4023-bbe3-149163bd80f1}\\InprocServer32",
+        "name": "", "type": "string", "value": "",
+        "restore_delete_key": "HKCU\\Software\\Classes\\CLSID\\{51668040-5e31-4023-bbe3-149163bd80f1}" }
     ]
   },
   {
