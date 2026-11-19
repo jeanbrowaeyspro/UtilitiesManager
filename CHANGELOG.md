@@ -1,5 +1,25 @@
 # Nouveautés
 
+## [1.1.0] - 2026-11-19
+
+Livraison qui reprend les versions d'essai 1.0.1 à 1.0.4.
+
+### Ajouté
+- Onglet Paramètres : mode par défaut du profil (automatique ou avec confirmation), suivi par chaque logiciel laissé sur "Défaut du profil".
+- Onglet Paramètres : désinstallations refusées sur ce PC, avec "Proposer de nouveau".
+- Onglet Réglages Windows : tous les réglages connus sont affichés, même ceux qui ne sont pas encore dans le profil (colonne "Dans le profil"). "Appliquer" sur l'un d'eux l'ajoute au profil.
+- Onglet Réglages Windows : boutons "Ajouter…", "Modifier…" (ou double-clic) et "Retirer du profil". La fenêtre d'un réglage donne son nom, le redémarrage de l'Explorateur et les valeurs du registre posées et rétablies.
+- Réglage "Compte local, sans demande de compte Microsoft" : interdit de passer la session en compte Microsoft et supprime les écrans et rappels qui en demandent un.
+- Fenêtre d'un logiciel : retouches de fichiers .ini posées après l'installation (fichier, section, clé, valeur).
+
+### Modifié
+- Changer seulement le mode d'un logiciel ne relance plus de vérification : la liste prend le nouveau mode tout de suite et, pour un logiciel passé en automatique, la mise à jour déjà connue est installée.
+- Onglet Réglages Windows : les boutons restent actifs pendant une installation.
+
+### Corrigé
+- Réglage "Menu contextuel classique" : la seconde clé de registre exigée depuis la mise à jour de novembre 2026 (KB5132061) est maintenant posée et rétablie.
+- Réglage de la barre des tâches : les widgets sont masqués par PolicyManager, la valeur Policies\Dsh étant refusée même en administrateur.
+
 ## [1.0.4] - 2026-11-19
 
 ### Modifié
