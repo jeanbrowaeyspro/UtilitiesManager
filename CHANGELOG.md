@@ -1,5 +1,13 @@
 # Nouveautés
 
+## [1.0.4] - 2026-11-19
+
+### Modifié
+- Onglet Réglages Windows : les boutons ("Appliquer", "Rétablir", "Ajouter…", "Modifier…", "Retirer du profil"…) restent actifs pendant une installation.
+
+### Corrigé
+- Réglage de la barre des tâches : les widgets sont masqués par PolicyManager, la valeur Policies\Dsh étant refusée même en administrateur.
+
 ## [1.0.3] - 2026-11-19
 
 ### Ajouté
