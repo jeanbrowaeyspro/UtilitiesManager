@@ -1,10 +1,13 @@
 # Nouveautés
 
-## [Non publié]
+## [1.0.3] - 2026-11-19
 
 ### Ajouté
 - Onglet Réglages Windows : tous les réglages connus sont affichés, même ceux qui ne sont pas encore dans le profil (colonne "Dans le profil"). "Appliquer" sur l'un d'eux l'ajoute au profil.
 - Réglage "Compte local, sans demande de compte Microsoft" : interdit de passer la session en compte Microsoft et supprime les écrans et rappels qui en demandent un.
+
+### Corrigé
+- Réglage "Menu contextuel classique" : la seconde clé de registre exigée depuis la mise à jour de novembre 2026 (KB5132061) est maintenant posée et rétablie.
 
 ## [1.0.2] - 2026-11-18
 
