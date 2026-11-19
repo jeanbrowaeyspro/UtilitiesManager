@@ -1,5 +1,11 @@
 # Nouveautés
 
+## [Non publié]
+
+### Ajouté
+- Onglet Réglages Windows : tous les réglages connus sont affichés, même ceux qui ne sont pas encore dans le profil (colonne "Dans le profil"). "Appliquer" sur l'un d'eux l'ajoute au profil.
+- Réglage "Compte local, sans demande de compte Microsoft" : interdit de passer la session en compte Microsoft et supprime les écrans et rappels qui en demandent un.
+
 ## [1.0.2] - 2026-11-18
 
 ### Ajouté

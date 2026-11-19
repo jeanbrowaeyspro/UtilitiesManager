@@ -57,5 +57,16 @@
       { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ShowSyncProviderNotifications", "type": "dword", "value": "0" },
       { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "Start_IrisRecommendations", "type": "dword", "value": "0" }
     ]
+  },
+  {
+    "id": "local-account",
+    "name": "Local account, no Microsoft account requested",
+    "values": [
+      { "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "name": "NoConnectedUser", "type": "dword", "value": "1" },
+      { "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE", "name": "BypassNRO", "type": "dword", "value": "1" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\UserProfileEngagement", "name": "ScoobeSystemSettingEnabled", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "Start_AccountNotifications", "type": "dword", "value": "0" },
+      { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\SystemSettings\\AccountNotifications", "name": "EnableAccountNotifications", "type": "dword", "value": "0" }
+    ]
   }
 ]

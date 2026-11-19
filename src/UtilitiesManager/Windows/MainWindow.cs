@@ -318,6 +318,7 @@ public sealed class MainWindow : ThemedWindow
     {
         _tweaks.Columns.Add(Ui.CheckColumn(nameof(TweakRow.Selected)));
         Column(_tweaks, L.T("Setting"), nameof(TweakRow.Name), 420);
+        Column(_tweaks, L.T("In the profile"), nameof(TweakRow.Profile), 110);
         Column(_tweaks, L.T("State"), nameof(TweakRow.State), double.NaN);
         _tweaks.MouseDoubleClick += (_, _) => _ = EditTweakAsync(isNew: false);
 
@@ -340,7 +341,9 @@ public sealed class MainWindow : ThemedWindow
     private void BuildTweaks()
     {
         var selected = CurrentTweak?.Tweak.Id;
-        var rows = (_controller.Profile?.Tweaks ?? []).Select(t => new TweakRow(t, _controller.IsApplied(t))).ToList();
+        var rows = (_controller.Profile?.Tweaks ?? []).Select(t => new TweakRow(t, _controller.IsApplied(t)))
+            .Concat(_controller.AvailableTweaks().Select(t => new TweakRow(t, _controller.IsApplied(t), inProfile: false)))
+            .ToList();
         _tweaks.ItemsSource = rows;
         _tweaks.SelectedItem = rows.FirstOrDefault(r => r.Tweak.Id == selected);
     }
@@ -384,7 +387,7 @@ public sealed class MainWindow : ThemedWindow
 
     private async Task RemoveTweakAsync()
     {
-        if (CurrentTweak is not { } row || _controller.Busy)
+        if (CurrentTweak is not { InProfile: true } row || _controller.Busy)
             return;
         if (!_controller.Dialogs.Confirm(L.T("Remove {0} from the profile?\n\nThe setting stays as it is on each PC: restore it first if needed.", row.Name),
                                          L.T("Remove"), L.T("Cancel")))

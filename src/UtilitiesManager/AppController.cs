@@ -565,6 +565,16 @@ public sealed class AppController
 
     public bool IsApplied(TweakEntry tweak) => Services.Tweaks.IsApplied(tweak);
 
+    /// <summary>Réglages du catalogue absents du profil, noms traduits (copies modifiables).</summary>
+    public List<TweakEntry> AvailableTweaks()
+    {
+        var known = (Profile?.Tweaks ?? []).Select(t => t.Id).ToHashSet();
+        var available = TweakCatalog.Load().Where(t => !known.Contains(t.Id)).ToList();
+        foreach (var tweak in available)
+            tweak.Name = L.T(tweak.Name);
+        return available;
+    }
+
     /// <summary>
     /// Ajoute au profil, après confirmation, les réglages du catalogue déjà posés sur ce PC et absents du profil.
     /// </summary>
@@ -572,15 +582,12 @@ public sealed class AppController
     {
         if (Profile is null)
             return;
-        var known = Profile.Tweaks.Select(t => t.Id).ToHashSet();
-        var found = TweakCatalog.Load().Where(t => !known.Contains(t.Id) && IsApplied(t)).ToList();
+        var found = AvailableTweaks().Where(IsApplied).ToList();
         if (found.Count == 0)
         {
             Dialogs.Info(L.T("No other known Windows setting is changed on this PC."));
             return;
         }
-        foreach (var tweak in found)
-            tweak.Name = L.T(tweak.Name);
         if (Dialogs.Confirm(L.T("Add these settings of this PC to the profile?\n\n{0}", string.Join("\n", found.Select(t => "- " + t.Name)))))
             await EditProfileAsync(p => p.Tweaks.AddRange(found), "Réglages Windows relevés sur ce PC");
     }
@@ -608,9 +615,17 @@ public sealed class AppController
         }
     }
 
-    /// <summary>Applique ou rétablit les réglages choisis ; redémarre l'Explorateur si l'un d'eux le demande.</summary>
+    /// <summary>
+    /// Applique ou rétablit les réglages choisis ; redémarre l'Explorateur si l'un d'eux le demande. Un réglage du
+    /// catalogue appliqué est d'abord ajouté au profil (rien n'est appliqué si l'enregistrement échoue).
+    /// </summary>
     public async Task ChangeTweaksAsync(IReadOnlyList<TweakEntry> tweaks, bool apply)
     {
+        var known = (Profile?.Tweaks ?? []).Select(t => t.Id).ToHashSet();
+        var added = apply ? tweaks.Where(t => !known.Contains(t.Id)).ToList() : [];
+        if (added.Count > 0 && !await EditProfileAsync(p => p.Tweaks.AddRange(added),
+                                                       "Ajout des réglages " + string.Join(", ", added.Select(t => t.Name))))
+            return;
         try
         {
             await _actions.ChangeTweaksAsync(tweaks, apply, Report);

@@ -65,13 +65,15 @@ public sealed class ProgramRow(ProgramStatus status, ProfileDefaults defaults, B
     };
 }
 
-/// <summary>Ligne de l'onglet Réglages Windows.</summary>
-public sealed class TweakRow(TweakEntry tweak, bool applied) : ObservableObject
+/// <summary>Ligne de l'onglet Réglages Windows : réglage du profil ou réglage du catalogue pas encore dans le profil.</summary>
+public sealed class TweakRow(TweakEntry tweak, bool applied, bool inProfile = true) : ObservableObject
 {
     private bool _selected;
 
     public TweakEntry Tweak { get; } = tweak;
     public bool Applied { get; } = applied;
+    public bool InProfile { get; } = inProfile;
+    public string Profile => InProfile ? L.T("Yes") : L.T("No");
 
     public bool Selected
     {

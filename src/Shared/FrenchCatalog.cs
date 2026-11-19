@@ -99,6 +99,8 @@ internal static class FrenchCatalog
         ["Taskbar on the left, without widgets or search"] = "Barre des tâches à gauche, sans widgets ni recherche",
         ["Dark theme"] = "Thème sombre",
         ["No Windows suggestions or ads"] = "Sans suggestions ni publicités Windows",
+        ["Local account, no Microsoft account requested"] = "Compte local, sans demande de compte Microsoft",
+        ["In the profile"] = "Dans le profil",
         ["Profile not reachable on GitHub: {0}"] = "Profil injoignable sur GitHub : {0}",
         ["Unreadable profile: {0}"] = "Profil illisible : {0}",
         ["Profile format {0} unknown to this version of UtilitiesManager."] = "Format de profil {0} inconnu de cette version de UtilitiesManager.",
