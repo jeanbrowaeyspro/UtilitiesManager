@@ -307,7 +307,7 @@ public class SoftwareTests
 
         Assert.Null(registry.GetValue(RegistryRoot.CurrentUser, advanced, "TaskbarDa"));
         Assert.Equal(0, registry.GetValue(RegistryRoot.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Search", "SearchboxTaskbarMode"));
-        Assert.Equal([@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Dsh"" /v ""AllowNewsAndInterests"" /t REG_DWORD /d ""0"" /f /reg:64"], commands);
+        Assert.Equal([@"reg add ""HKLM\SOFTWARE\Microsoft\PolicyManager\default\NewsAndInterests\AllowNewsAndInterests"" /v ""value"" /t REG_DWORD /d ""0"" /f /reg:64"], commands);
 
         // Valeur HKLM absente : rien à rétablir, aucune invite.
         commands.Clear();

@@ -34,7 +34,7 @@
     "restart_explorer": true,
     "values": [
       { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarAl", "type": "dword", "value": "0" },
-      { "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Dsh", "name": "AllowNewsAndInterests", "type": "dword", "value": "0" },
+      { "key": "HKLM\\SOFTWARE\\Microsoft\\PolicyManager\\default\\NewsAndInterests\\AllowNewsAndInterests", "name": "value", "type": "dword", "value": "0" },
       { "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Search", "name": "SearchboxTaskbarMode", "type": "dword", "value": "0" }
     ]
   },
