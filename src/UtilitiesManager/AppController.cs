@@ -204,8 +204,8 @@ public sealed class AppController
         ProfileRepositoryMissing = false;
         if (modesOnly)
             await ApplyModesAsync(changed);
-        else
-            await CheckAsync(manual: true);
+        else if (await CheckAsync(manual: true) is null)
+            StateChanged?.Invoke();
         return true;
     }
 

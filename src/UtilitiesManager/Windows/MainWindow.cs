@@ -210,6 +210,14 @@ public sealed class MainWindow : ThemedWindow
         return button;
     }
 
+    /// <summary>Bouton de l'onglet Réglages Windows : reste actif pendant une installation.</summary>
+    private static Button TweakAction(string text, Action click, double minWidth = 110)
+    {
+        var button = Ui.TextButton(text, click, minWidth);
+        button.Margin = new Thickness(0, 0, 8, 6);
+        return button;
+    }
+
     private ProgramRow? Current => _programs.SelectedItem as ProgramRow;
 
     private IEnumerable<ProgramRow> Rows => _programs.ItemsSource as IEnumerable<ProgramRow> ?? [];
@@ -323,12 +331,12 @@ public sealed class MainWindow : ThemedWindow
         _tweaks.MouseDoubleClick += (_, _) => _ = EditTweakAsync(isNew: false);
 
         var buttons = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
-        buttons.Children.Add(Action(L.T("Apply"), () => ChangeTweaks(apply: true)));
-        buttons.Children.Add(Action(L.T("Restore"), () => ChangeTweaks(apply: false)));
-        buttons.Children.Add(Action(L.T("Capture from this PC"), () => _ = _controller.CaptureTweaksAsync(), 160));
-        buttons.Children.Add(Action(L.T("Add…"), () => _ = EditTweakAsync(isNew: true)));
-        buttons.Children.Add(Action(L.T("Change…"), () => _ = EditTweakAsync(isNew: false)));
-        buttons.Children.Add(Action(L.T("Remove from profile"), () => _ = RemoveTweakAsync(), 160));
+        buttons.Children.Add(TweakAction(L.T("Apply"), () => ChangeTweaks(apply: true)));
+        buttons.Children.Add(TweakAction(L.T("Restore"), () => ChangeTweaks(apply: false)));
+        buttons.Children.Add(TweakAction(L.T("Capture from this PC"), () => _ = _controller.CaptureTweaksAsync(), 160));
+        buttons.Children.Add(TweakAction(L.T("Add…"), () => _ = EditTweakAsync(isNew: true)));
+        buttons.Children.Add(TweakAction(L.T("Change…"), () => _ = EditTweakAsync(isNew: false)));
+        buttons.Children.Add(TweakAction(L.T("Remove from profile"), () => _ = RemoveTweakAsync(), 160));
         var panel = new DockPanel { Margin = new Thickness(0, 10, 0, 10) };
         DockPanel.SetDock(buttons, Dock.Bottom);
         panel.Children.Add(buttons);
@@ -362,7 +370,7 @@ public sealed class MainWindow : ThemedWindow
     /// <summary>Éditeur du réglage choisi (ou d'un nouveau) puis enregistrement dans le profil.</summary>
     private async Task EditTweakAsync(bool isNew)
     {
-        if (_controller.Profile is not { } profile || _controller.Busy)
+        if (_controller.Profile is not { } profile)
             return;
         TweakEntry tweak;
         if (isNew)
@@ -387,7 +395,7 @@ public sealed class MainWindow : ThemedWindow
 
     private async Task RemoveTweakAsync()
     {
-        if (CurrentTweak is not { InProfile: true } row || _controller.Busy)
+        if (CurrentTweak is not { InProfile: true } row)
             return;
         if (!_controller.Dialogs.Confirm(L.T("Remove {0} from the profile?\n\nThe setting stays as it is on each PC: restore it first if needed.", row.Name),
                                          L.T("Remove"), L.T("Cancel")))
